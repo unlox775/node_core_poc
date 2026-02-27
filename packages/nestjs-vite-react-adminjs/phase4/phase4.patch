@@ -1,8 +1,8 @@
 diff --git a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts
-index a72cc8a..11f97ec 100644
+index 3fbcdc4..c964d44 100644
 --- a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts
 +++ b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts
-@@ -11,7 +11,7 @@ export class DealsController {
+@@ -12,7 +12,7 @@ export class DealsController {
    }
  
    @Post()
@@ -11,7 +11,7 @@ index a72cc8a..11f97ec 100644
      return this.deals.create(body);
    }
  
-@@ -24,4 +24,14 @@ export class DealsController {
+@@ -25,4 +25,14 @@ export class DealsController {
    remove(@Param('id') id: string) {
      return this.deals.remove(id);
    }
@@ -27,16 +27,17 @@ index a72cc8a..11f97ec 100644
 +  }
  }
 diff --git a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts
-index f79edb1..f33ed78 100644
+index 848cf7b..4615b6a 100644
 --- a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts
 +++ b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts
-@@ -1,4 +1,5 @@
+@@ -1,5 +1,6 @@
  import { Injectable } from '@nestjs/common';
+ import { DealStatus } from '@prisma/client';
 +import { Prisma } from '@prisma/client';
  import { PrismaService } from '../prisma/prisma.service';
  
  @Injectable()
-@@ -6,11 +7,26 @@ export class DealsService {
+@@ -7,11 +8,26 @@ export class DealsService {
    constructor(private prisma: PrismaService) {}
  
    findAll() {
@@ -50,10 +51,10 @@ index f79edb1..f33ed78 100644
    }
  
 -  create(data: { name: string; description: string; address: string }) {
--    return this.prisma.deal.create({ data: { ...data, status: 'pending' } });
+-    return this.prisma.deal.create({ data: { ...data, status: DealStatus.pending } });
 +  create(data: { name: string; description: string; address: string; contact?: { name: string; email: string; phone: string } }) {
 +    const { contact, ...dealData } = data;
-+    const createData: Prisma.DealCreateInput = { ...dealData, status: 'pending' };
++    const createData: Prisma.DealCreateInput = { ...dealData, status: DealStatus.pending };
 +    if (contact?.name && contact?.email && contact?.phone) {
 +      createData.contacts = {
 +        create: [{ contact: { create: contact } }],
@@ -65,8 +66,8 @@ index f79edb1..f33ed78 100644
 +    }).then((d) => ({ ...d, contacts: d.contacts.map((dc: { contact: unknown }) => dc.contact) }));
    }
  
-   update(id: string, data: { name?: string; description?: string; address?: string; status?: string }) {
-@@ -20,4 +36,12 @@ export class DealsService {
+   update(id: string, data: { name?: string; description?: string; address?: string; status?: DealStatus }) {
+@@ -21,4 +37,12 @@ export class DealsService {
    remove(id: string) {
      return this.prisma.deal.delete({ where: { id } });
    }
@@ -80,11 +81,10 @@ index f79edb1..f33ed78 100644
 +  }
  }
 diff --git a/packages/nestjs-vite-react-adminjs/api/src/main.ts b/packages/nestjs-vite-react-adminjs/api/src/main.ts
-index a38eee4..242b122 100644
+index 4a7ed28..2382ea4 100644
 --- a/packages/nestjs-vite-react-adminjs/api/src/main.ts
 +++ b/packages/nestjs-vite-react-adminjs/api/src/main.ts
-@@ -17,6 +17,8 @@ async function bootstrap() {
-   const admin = new AdminJS({
+@@ -19,6 +19,8 @@ async function bootstrap() {
      resources: [
        { resource: { model: getModelByName('Deal'), client: prisma }, options: {} },
        { resource: { model: getModelByName('AdminUser'), client: prisma }, options: {} },
@@ -92,11 +92,12 @@ index a38eee4..242b122 100644
 +      { resource: { model: getModelByName('DealContact'), client: prisma }, options: {} },
      ],
    });
- diff --git a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
-index 6bc7cf8..8d79689 100644
+   const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
+diff --git a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
+index f2045bd..ef2cdc4 100644
 --- a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
 +++ b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
-@@ -15,6 +15,16 @@ model AdminUser {
+@@ -21,6 +21,16 @@ model AdminUser {
    updatedAt DateTime @updatedAt
  }
  
@@ -113,8 +114,8 @@ index 6bc7cf8..8d79689 100644
  model Deal {
    id          String   @id @default(cuid())
    name        String
-@@ -23,4 +33,13 @@ model Deal {
-   status      String   @default("pending")
+@@ -29,4 +39,13 @@ model Deal {
+   status      DealStatus @default(pending)
    createdAt   DateTime @default(now())
    updatedAt   DateTime @updatedAt
 +  contacts    DealContact[]
