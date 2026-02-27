@@ -1,22 +1,20 @@
 # Phase 4: Add Contact Model
 
-This folder contains patch files to apply and unapply the Phase 4 (Contact model) changes. The base codebase is Phase 3 only — no Contact, DealContact, or contacts UI.
-
-**Manual edits**: If you prefer to apply changes by hand instead of `git apply`, see [phase4-manual-patch.md](./phase4-manual-patch.md) for file-by-file, line-by-line instructions with copy-paste code blocks.
+This folder contains the patch that adds the Contact model (and DealContact join table) to the NestJS + Vite React + AdminJS stack. **The default codebase is Phase 3 only** — Deal and AdminUser, no Contact. Phase 4 demonstrates what it takes to add a new model with this stack.
 
 ## Apply Phase 4
 
 From the **repo root**:
 
 ```bash
-git apply packages/nestjs-vite-react/phase4/phase4.patch
+git apply packages/nestjs-vite-react-adminjs/phase4/phase4.patch
 ```
 
 Then:
 
 ```bash
-cd packages/nestjs-vite-react
-npm run db:reseed   # schema changed — reseed
+cd packages/nestjs-vite-react-adminjs
+npm run db:reseed
 npm run dev
 ```
 
@@ -25,19 +23,23 @@ npm run dev
 From the **repo root**:
 
 ```bash
-git apply -R packages/nestjs-vite-react/phase4/phase4.patch
+git apply -R packages/nestjs-vite-react-adminjs/phase4/phase4.patch
 ```
 
-Then reseed and run again (schema back to Phase 3):
+Then:
 
 ```bash
-cd packages/nestjs-vite-react
+cd packages/nestjs-vite-react-adminjs
 npm run db:reseed
-npm run dev
 ```
 
 ## What Phase 4 Adds
 
 - **Schema**: Contact model, DealContact join table, Deal.contacts relation
-- **API**: ContactsModule, add/remove contacts endpoints on DealsController
-- **UI**: Primary contact on public deal form, AdminContacts page, contact management on deal edit
+- **AdminJS**: Contact and DealContact resources (auto-generated CRUD)
+- **API**: Deals create accepts optional contact; addContact/removeContact on DealsController
+- **UI**: Primary contact (optional) on public deal form
+
+## Manual apply
+
+If you prefer not to use `git apply`, see [phase4-manual-patch.md](./phase4-manual-patch.md) for step-by-step edits.

@@ -1,6 +1,6 @@
 # Demo Script — NestJS + Vite React + AdminJS (Ben's Cranes)
 
-Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "ethan" in the email field, "123qwe" for password.
+Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "ethan" in the email field, "123qwe" for password. **Default codebase is Phase 3 only** (Deal + AdminUser; no Contact). Phase 4 is delivered as a patch to show what it takes to add a new model.
 
 ---
 
@@ -48,11 +48,50 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 11. Log in: **ethan** / **123qwe** (use "ethan" in the email field).
 
-12. **You should see**: AdminJS dashboard with **Deal** and **AdminUser** resources. Full CRUD is auto-generated — list, create, edit, delete.
+12. **You should see**: AdminJS dashboard with **Deal** and **AdminUser** only. Full CRUD for deals. No Contact yet.
 
 13. Click **Deal** → see the deals (seeded + the one you submitted). Edit, delete, or create new from AdminJS.
 
-14. **Adding a new model**: Add to Prisma schema → migrate → add to AdminJS `resources` in `api/src/app.module.ts` → done. AdminJS generates the admin UI.
+---
+
+## Phase 4: Add Contact Model
+
+Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+
+To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md).
+
+**To apply Phase 4** (from repo root):
+
+```bash
+git apply packages/nestjs-vite-react-adminjs/phase4/phase4.patch
+cd packages/nestjs-vite-react-adminjs
+npm run db:reseed
+npm run dev
+```
+
+Or run `./packages/nestjs-vite-react-adminjs/phase4/apply.sh` from repo root.
+
+**To revert** (back to Phase 3):
+
+```bash
+git apply -R packages/nestjs-vite-react-adminjs/phase4/phase4.patch
+cd packages/nestjs-vite-react-adminjs
+npm run db:reseed
+```
+
+**With Phase 4 applied:**
+
+1. Go to http://localhost:5173/deals/new. Submit a deal **with** a primary contact (name, email, phone).
+
+2. Log in to admin. See the new deal. AdminJS now has **Contact** and **DealContact** resources — list, create, edit, delete. Manage deal–contact links from AdminJS.
+
+---
+
+## Phase 5: Verify End-to-End
+
+(Requires Phase 4 applied.)
+
+3. Submit a new deal from the public form (with contact info). In admin, confirm the new deal and contact appear. Verify the full flow.
 
 ---
 

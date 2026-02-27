@@ -166,6 +166,8 @@ In the demo flow, optionally: try to hit an admin endpoint without logging in (e
 
 ### Phase 4: Add New Model (Contacts)
 
+**Purpose**: Phase 4 demonstrates *the process and effort* of adding a new model with that framework. The default codebase is Phase 3 only (Deal + AdminUser, no Contact). You then apply the Phase 4 change (patch, scaffold, or manual steps) to add Contact and Deal–Contact. Phase 5 simply verifies the result. This shows "with this framework, here's what it takes to add a new model."
+
 15. Add the Contact model in whatever way that framework does it:
     - Schema / migration (or equivalent)
     - API routes or data layer for contacts
