@@ -1,0 +1,338 @@
+diff --git b/packages/t3-stack/prisma/schema.prisma a/packages/t3-stack/prisma/schema.prisma
+index c9adde81..720b9ebb 100644
+--- b/packages/t3-stack/prisma/schema.prisma
++++ a/packages/t3-stack/prisma/schema.prisma
+@@ -17,6 +17,16 @@ model AdminUser {
+   updatedAt DateTime @updatedAt
+ }
+ 
++model Contact {
++  id        String   @id @default(cuid())
++  name      String
++  email     String
++  phone     String
++  createdAt DateTime @default(now())
++  updatedAt DateTime @updatedAt
++  deals     DealContact[]
++}
++
+ model Deal {
+   id          String   @id @default(cuid())
+   name        String
+@@ -25,4 +35,13 @@ model Deal {
+   status      String   @default("pending")
+   createdAt   DateTime @default(now())
+   updatedAt   DateTime @updatedAt
++  contacts    DealContact[]
++}
++
++model DealContact {
++  dealId    String
++  contactId String
++  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
++  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
++  @@id([dealId, contactId])
+ }
+diff --git b/packages/t3-stack/src/app/admin/contacts/page.tsx a/packages/t3-stack/src/app/admin/contacts/page.tsx
+new file mode 100644
+index 00000000..2178f861
+--- /dev/null
++++ a/packages/t3-stack/src/app/admin/contacts/page.tsx
+@@ -0,0 +1,62 @@
++"use client";
++
++import { useEffect, useState } from "react";
++import Link from "next/link";
++import { useRouter } from "next/navigation";
++import { api } from "~/trpc/react";
++
++export default function AdminContactsPage() {
++  const router = useRouter();
++  const [authed, setAuthed] = useState<boolean | null>(null);
++  const [name, setName] = useState("");
++  const [email, setEmail] = useState("");
++  const [phone, setPhone] = useState("");
++
++  useEffect(() => {
++    setAuthed(sessionStorage.getItem("admin") === "1");
++  }, []);
++
++  const { data: contacts, refetch } = api.contact.list.useQuery();
++  const createContact = api.contact.create.useMutation({
++    onSuccess: () => {
++      setName("");
++      setEmail("");
++      setPhone("");
++      void refetch();
++    },
++  });
++
++  if (authed === null) return <p>Loading...</p>;
++  if (!authed) {
++    router.push("/admin");
++    return null;
++  }
++
++  return (
++    <main>
++      <h1>Admin — Contacts</h1>
++      <p><Link href="/admin">← Back to admin</Link> | <Link href="/admin/deals">Deals</Link> | <Link href="/">Home</Link></p>
++      <h2>Create contact</h2>
++      <form
++        onSubmit={(e) => {
++          e.preventDefault();
++          createContact.mutate({ name, email, phone });
++        }}
++      >
++        <div><label>Name</label><input value={name} onChange={(e) => setName(e.target.value)} required /></div>
++        <div><label>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
++        <div><label>Phone</label><input value={phone} onChange={(e) => setPhone(e.target.value)} required /></div>
++        <button type="submit" disabled={createContact.isPending}>Create</button>
++      </form>
++      <h2>All contacts</h2>
++      <ul style={{ listStyle: "none", padding: 0 }}>
++        {contacts?.map((c) => (
++          <li key={c.id} style={{ border: "1px solid #ccc", padding: "1rem", marginBottom: "0.5rem", borderRadius: 4 }}>
++            <strong>{c.name}</strong>
++            <p><small>{c.email} · {c.phone}</small></p>
++          </li>
++        ))}
++      </ul>
++    </main>
++  );
++}
+diff --git b/packages/t3-stack/src/app/admin/deals/[id]/page.tsx a/packages/t3-stack/src/app/admin/deals/[id]/page.tsx
+index 387115ec..0224f452 100644
+--- b/packages/t3-stack/src/app/admin/deals/[id]/page.tsx
++++ a/packages/t3-stack/src/app/admin/deals/[id]/page.tsx
+@@ -5,6 +5,8 @@ import Link from "next/link";
+ import { useRouter, useParams } from "next/navigation";
+ import { api } from "~/trpc/react";
+ 
++type Contact = { id: string; name: string; email: string; phone: string };
++
+ export default function AdminEditDealPage() {
+   const router = useRouter();
+   const params = useParams();
+@@ -19,12 +21,21 @@ export default function AdminEditDealPage() {
+     setAuthed(sessionStorage.getItem("admin") === "1");
+   }, []);
+ 
+-  const { data: deals, refetch } = api.deal.list.useQuery();
++  const { data: deals, refetch: refetchDeals } = api.deal.list.useQuery();
++  const { data: allContacts } = api.contact.list.useQuery();
+   const deal = deals?.find((d) => d.id === id);
++  const contacts = deal?.contacts?.map((dc: { contact: Contact }) => dc.contact) ?? [];
++  const availableToAdd = (allContacts ?? []).filter((c) => !contacts.some((x: Contact) => x.id === c.id));
+ 
+   const updateDeal = api.deal.update.useMutation({
+     onSuccess: () => router.push("/admin/deals"),
+   });
++  const addContact = api.contact.addToDeal.useMutation({
++    onSuccess: () => void refetchDeals(),
++  });
++  const removeContact = api.contact.removeFromDeal.useMutation({
++    onSuccess: () => void refetchDeals(),
++  });
+ 
+   useEffect(() => {
+     if (deal) {
+@@ -74,6 +85,31 @@ export default function AdminEditDealPage() {
+         </div>
+         <button type="submit" disabled={updateDeal.isPending}>Save</button>
+       </form>
++      <h2>Contacts on this deal</h2>
++      <ul style={{ listStyle: "none", padding: 0 }}>
++        {contacts.map((c: Contact) => (
++          <li key={c.id} style={{ marginBottom: "0.5rem" }}>
++            {c.name} ({c.email}) — <button type="button" onClick={() => removeContact.mutate({ dealId: id, contactId: c.id })} style={{ fontSize: "0.875rem" }}>Remove</button>
++          </li>
++        ))}
++      </ul>
++      {availableToAdd.length > 0 && (
++        <>
++          <h3>Add existing contact</h3>
++          <select
++            onChange={(e) => {
++              const v = e.target.value;
++              if (v) addContact.mutate({ dealId: id, contactId: v });
++              e.target.value = "";
++            }}
++          >
++            <option value="">— Select contact —</option>
++            {availableToAdd.map((c) => (
++              <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
++            ))}
++          </select>
++        </>
++      )}
+     </main>
+   );
+ }
+diff --git b/packages/t3-stack/src/app/admin/deals/page.tsx a/packages/t3-stack/src/app/admin/deals/page.tsx
+index ada4a3c1..52cd5fd5 100644
+--- b/packages/t3-stack/src/app/admin/deals/page.tsx
++++ a/packages/t3-stack/src/app/admin/deals/page.tsx
+@@ -26,7 +26,7 @@ export default function AdminDealsPage() {
+   return (
+     <main>
+       <h1>Admin — Deals</h1>
+-      <p><Link href="/admin">← Back to admin</Link> | <Link href="/">Home</Link></p>
++      <p><Link href="/admin">← Back to admin</Link> | <Link href="/admin/contacts">Contacts</Link> | <Link href="/">Home</Link></p>
+       {isLoading ? (
+         <p>Loading...</p>
+       ) : (
+@@ -36,6 +36,9 @@ export default function AdminDealsPage() {
+               <strong>{d.name}</strong>
+               <p>{d.description}</p>
+               <p><small>{d.address} · Status: {d.status}</small></p>
++              {d.contacts && d.contacts.length > 0 && (
++                <p><small>Contacts: {d.contacts.map((dc: { contact: { name: string } }) => dc.contact.name).join(", ")}</small></p>
++              )}
+               <p>
+                 <Link href={`/admin/deals/${d.id}`}>Edit</Link>
+                 {" · "}
+diff --git b/packages/t3-stack/src/app/deals/new/page.tsx a/packages/t3-stack/src/app/deals/new/page.tsx
+index bf760cdc..95b26bab 100644
+--- b/packages/t3-stack/src/app/deals/new/page.tsx
++++ a/packages/t3-stack/src/app/deals/new/page.tsx
+@@ -10,6 +10,9 @@ export default function NewDealPage() {
+   const [name, setName] = useState("");
+   const [description, setDescription] = useState("");
+   const [address, setAddress] = useState("");
++  const [contactName, setContactName] = useState("");
++  const [contactEmail, setContactEmail] = useState("");
++  const [contactPhone, setContactPhone] = useState("");
+ 
+   const createDeal = api.deal.create.useMutation({
+     onSuccess: () => router.push("/thank-you"),
+@@ -22,7 +25,15 @@ export default function NewDealPage() {
+       <form
+         onSubmit={(e) => {
+           e.preventDefault();
+-          createDeal.mutate({ name, description, address });
++          const payload: { name: string; description: string; address: string; contact?: { name: string; email: string; phone: string } } = {
++            name,
++            description,
++            address,
++          };
++          if (contactName && contactEmail && contactPhone) {
++            payload.contact = { name: contactName, email: contactEmail, phone: contactPhone };
++          }
++          createDeal.mutate(payload);
+         }}
+       >
+         <h2>Deal</h2>
+@@ -38,6 +49,19 @@ export default function NewDealPage() {
+           <label>Address</label>
+           <input value={address} onChange={(e) => setAddress(e.target.value)} required />
+         </div>
++        <h2>Primary Contact (optional)</h2>
++        <div>
++          <label>Contact name</label>
++          <input value={contactName} onChange={(e) => setContactName(e.target.value)} />
++        </div>
++        <div>
++          <label>Contact email</label>
++          <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} />
++        </div>
++        <div>
++          <label>Contact phone</label>
++          <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} />
++        </div>
+         <button type="submit" disabled={createDeal.isPending}>
+           {createDeal.isPending ? "Submitting..." : "Submit Deal"}
+         </button>
+diff --git b/packages/t3-stack/src/server/api/root.ts a/packages/t3-stack/src/server/api/root.ts
+index 61661b88..bfe83f13 100644
+--- b/packages/t3-stack/src/server/api/root.ts
++++ a/packages/t3-stack/src/server/api/root.ts
+@@ -1,10 +1,12 @@
+ import { createTRPCRouter } from "~/server/api/trpc";
+ import { dealRouter } from "~/server/api/routers/deal";
+ import { adminRouter } from "~/server/api/routers/admin";
++import { contactRouter } from "~/server/api/routers/contact";
+ 
+ export const appRouter = createTRPCRouter({
+   deal: dealRouter,
+   admin: adminRouter,
++  contact: contactRouter,
+ });
+ 
+ export type AppRouter = typeof appRouter;
+diff --git b/packages/t3-stack/src/server/api/routers/contact.ts a/packages/t3-stack/src/server/api/routers/contact.ts
+new file mode 100644
+index 00000000..b25fe25a
+--- /dev/null
++++ a/packages/t3-stack/src/server/api/routers/contact.ts
+@@ -0,0 +1,26 @@
++import { z } from "zod";
++import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
++
++export const contactRouter = createTRPCRouter({
++  list: publicProcedure.query(({ ctx }) =>
++    ctx.db.contact.findMany({ orderBy: { name: "asc" } })
++  ),
++
++  create: publicProcedure
++    .input(z.object({ name: z.string(), email: z.string(), phone: z.string() }))
++    .mutation(({ ctx, input }) => ctx.db.contact.create({ data: input })),
++
++  addToDeal: publicProcedure
++    .input(z.object({ dealId: z.string(), contactId: z.string() }))
++    .mutation(({ ctx, input }) =>
++      ctx.db.dealContact.create({ data: { dealId: input.dealId, contactId: input.contactId } })
++    ),
++
++  removeFromDeal: publicProcedure
++    .input(z.object({ dealId: z.string(), contactId: z.string() }))
++    .mutation(({ ctx, input }) =>
++      ctx.db.dealContact.delete({
++        where: { dealId_contactId: { dealId: input.dealId, contactId: input.contactId } },
++      })
++    ),
++});
+diff --git b/packages/t3-stack/src/server/api/routers/deal.ts a/packages/t3-stack/src/server/api/routers/deal.ts
+index f11015d9..510d88f4 100644
+--- b/packages/t3-stack/src/server/api/routers/deal.ts
++++ a/packages/t3-stack/src/server/api/routers/deal.ts
+@@ -3,14 +3,34 @@ import { createTRPCRouter, publicProcedure } from "~/server/api/trpc";
+ 
+ export const dealRouter = createTRPCRouter({
+   list: publicProcedure.query(({ ctx }) =>
+-    ctx.db.deal.findMany({ orderBy: { createdAt: "desc" } })
++    ctx.db.deal.findMany({
++      orderBy: { createdAt: "desc" },
++      include: { contacts: { include: { contact: true } } },
++    })
+   ),
+ 
+   create: publicProcedure
+-    .input(z.object({ name: z.string(), description: z.string(), address: z.string() }))
+-    .mutation(({ ctx, input }) =>
+-      ctx.db.deal.create({ data: { ...input, status: "pending" } })
+-    ),
++    .input(
++      z.object({
++        name: z.string(),
++        description: z.string(),
++        address: z.string(),
++        contact: z.object({ name: z.string(), email: z.string(), phone: z.string() }).optional(),
++      })
++    )
++    .mutation(({ ctx, input }) => {
++      const { contact, ...dealData } = input;
++      const data: Parameters<typeof ctx.db.deal.create>[0]["data"] = { ...dealData, status: "pending" };
++      if (contact) {
++        data.contacts = {
++          create: [{ contact: { create: contact } }],
++        };
++      }
++      return ctx.db.deal.create({
++        data,
++        include: { contacts: { include: { contact: true } } },
++      });
++    }),
+ 
+   update: publicProcedure
+     .input(z.object({

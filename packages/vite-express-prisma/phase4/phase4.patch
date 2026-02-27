@@ -1,0 +1,401 @@
+diff --git b/packages/vite-express-prisma/api/index.ts a/packages/vite-express-prisma/api/index.ts
+index cb32c21e..f32d56b0 100644
+--- b/packages/vite-express-prisma/api/index.ts
++++ a/packages/vite-express-prisma/api/index.ts
+@@ -52,15 +52,39 @@ app.post("/api/admin/logout", (req, res) => {
+ 
+ // PUBLIC: Submit new deal (contact form — anyone can submit)
+ app.post("/api/deals", async (req, res) => {
+-  const { name, description, address } = req.body;
+-  const deal = await prisma.deal.create({ data: { name, description, address, status: "pending" } });
+-  res.json(deal);
++  const { name, description, address, contact } = req.body;
++  const data: {
++    name: string;
++    description: string;
++    address: string;
++    status: string;
++    contacts?: { create: { contact: { create: { name: string; email: string; phone: string } } }[] };
++  } = {
++    name,
++    description,
++    address,
++    status: "pending",
++  };
++  if (contact?.name && contact?.email && contact?.phone) {
++    data.contacts = {
++      create: [{ contact: { create: { name: contact.name, email: contact.email, phone: contact.phone } } }],
++    };
++  }
++  const deal = await prisma.deal.create({ data, include: { contacts: { include: { contact: true } } } });
++  res.json({ ...deal, contacts: deal.contacts.map((dc) => dc.contact) });
+ });
+ 
+ // ADMIN: List deals (protected)
+ app.get("/api/deals", requireAdmin, async (_req, res) => {
+-  const deals = await prisma.deal.findMany({ orderBy: { createdAt: "desc" } });
+-  res.json(deals);
++  const deals = await prisma.deal.findMany({
++    orderBy: { createdAt: "desc" },
++    include: { contacts: { include: { contact: true } } },
++  });
++  const mapped = deals.map((d) => ({
++    ...d,
++    contacts: d.contacts.map((dc) => dc.contact),
++  }));
++  res.json(mapped);
+ });
+ 
+ app.put("/api/deals/:id", requireAdmin, async (req, res) => {
+@@ -75,5 +99,29 @@ app.delete("/api/deals/:id", requireAdmin, async (req, res) => {
+   res.json({ ok: true });
+ });
+ 
++app.post("/api/deals/:id/contacts", requireAdmin, async (req, res) => {
++  const { id } = req.params;
++  const { contactId } = req.body;
++  await prisma.dealContact.create({ data: { dealId: id, contactId } });
++  res.json({ ok: true });
++});
++
++app.delete("/api/deals/:dealId/contacts/:contactId", requireAdmin, async (req, res) => {
++  const { dealId, contactId } = req.params;
++  await prisma.dealContact.delete({ where: { dealId_contactId: { dealId, contactId } } });
++  res.json({ ok: true });
++});
++
++app.get("/api/contacts", requireAdmin, async (_req, res) => {
++  const contacts = await prisma.contact.findMany({ orderBy: { name: "asc" } });
++  res.json(contacts);
++});
++
++app.post("/api/contacts", requireAdmin, async (req, res) => {
++  const { name, email, phone } = req.body;
++  const contact = await prisma.contact.create({ data: { name, email, phone } });
++  res.json(contact);
++});
++
+ const PORT = process.env.PORT || 3001;
+ app.listen(PORT, () => console.log(`API on http://localhost:${PORT}`));
+diff --git b/packages/vite-express-prisma/prisma/schema.prisma a/packages/vite-express-prisma/prisma/schema.prisma
+index 6bc7cf85..8d79689c 100644
+--- b/packages/vite-express-prisma/prisma/schema.prisma
++++ a/packages/vite-express-prisma/prisma/schema.prisma
+@@ -15,6 +15,16 @@ model AdminUser {
+   updatedAt DateTime @updatedAt
+ }
+ 
++model Contact {
++  id        String   @id @default(cuid())
++  name      String
++  email     String
++  phone     String
++  createdAt DateTime @default(now())
++  updatedAt DateTime @updatedAt
++  deals     DealContact[]
++}
++
+ model Deal {
+   id          String   @id @default(cuid())
+   name        String
+@@ -23,4 +33,13 @@ model Deal {
+   status      String   @default("pending")
+   createdAt   DateTime @default(now())
+   updatedAt   DateTime @updatedAt
++  contacts    DealContact[]
++}
++
++model DealContact {
++  dealId    String
++  contactId String
++  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
++  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
++  @@id([dealId, contactId])
+ }
+diff --git b/packages/vite-express-prisma/src/App.tsx a/packages/vite-express-prisma/src/App.tsx
+index 639adb70..01297042 100644
+--- b/packages/vite-express-prisma/src/App.tsx
++++ a/packages/vite-express-prisma/src/App.tsx
+@@ -5,6 +5,7 @@ import ThankYou from "./pages/ThankYou";
+ import AdminLogin from "./pages/AdminLogin";
+ import AdminDeals from "./pages/AdminDeals";
+ import AdminEditDeal from "./pages/AdminEditDeal";
++import AdminContacts from "./pages/AdminContacts";
+ 
+ export default function App() {
+   return (
+@@ -15,6 +16,7 @@ export default function App() {
+       <Route path="/admin" element={<AdminLogin />} />
+       <Route path="/admin/deals" element={<AdminDeals />} />
+       <Route path="/admin/deals/:id" element={<AdminEditDeal />} />
++      <Route path="/admin/contacts" element={<AdminContacts />} />
+     </Routes>
+   );
+ }
+diff --git b/packages/vite-express-prisma/src/pages/AdminContacts.tsx a/packages/vite-express-prisma/src/pages/AdminContacts.tsx
+new file mode 100644
+index 00000000..7b468d3b
+--- /dev/null
++++ a/packages/vite-express-prisma/src/pages/AdminContacts.tsx
+@@ -0,0 +1,67 @@
++import { useEffect, useState } from "react";
++import { Link, useNavigate } from "react-router-dom";
++
++type Contact = { id: string; name: string; email: string; phone: string };
++
++export default function AdminContacts() {
++  const navigate = useNavigate();
++  const [contacts, setContacts] = useState<Contact[]>([]);
++  const [loading, setLoading] = useState(true);
++  const [name, setName] = useState("");
++  const [email, setEmail] = useState("");
++  const [phone, setPhone] = useState("");
++
++  const load = () => fetch("/api/contacts", { credentials: "include" }).then((r) => r.json()).then(setContacts);
++
++  useEffect(() => {
++    if (sessionStorage.getItem("admin") !== "1") {
++      navigate("/admin");
++      return;
++    }
++    load().finally(() => setLoading(false));
++  }, [navigate]);
++
++  const create = (e: React.FormEvent) => {
++    e.preventDefault();
++    fetch("/api/contacts", {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      credentials: "include",
++      body: JSON.stringify({ name, email, phone }),
++    }).then((r) => r.ok && (() => {
++      setName("");
++      setEmail("");
++      setPhone("");
++      load();
++    })());
++  };
++
++  return (
++    <main>
++      <h1>Admin — Contacts</h1>
++      <p>
++        <Link to="/admin">← Back to admin</Link> | <Link to="/admin/deals">Deals</Link> | <Link to="/">Home</Link>
++        {" · "}
++        <button type="button" onClick={() => { fetch("/api/admin/logout", { method: "POST", credentials: "include" }); sessionStorage.removeItem("admin"); navigate("/"); }} style={{ background: "none", border: "none", color: "inherit", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Log out</button>
++      </p>
++      <h2>Create contact</h2>
++      <form onSubmit={create}>
++        <div><label>Name</label><input value={name} onChange={(e) => setName(e.target.value)} required /></div>
++        <div><label>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
++        <div><label>Phone</label><input value={phone} onChange={(e) => setPhone(e.target.value)} required /></div>
++        <button type="submit">Create</button>
++      </form>
++      <h2>All contacts</h2>
++      {loading ? <p>Loading...</p> : (
++        <ul style={{ listStyle: "none", padding: 0 }}>
++          {contacts.map((c) => (
++            <li key={c.id} style={{ border: "1px solid #ccc", padding: "1rem", marginBottom: "0.5rem", borderRadius: 4 }}>
++              <strong>{c.name}</strong>
++              <p><small>{c.email} · {c.phone}</small></p>
++            </li>
++          ))}
++        </ul>
++      )}
++    </main>
++  );
++}
+diff --git b/packages/vite-express-prisma/src/pages/AdminDeals.tsx a/packages/vite-express-prisma/src/pages/AdminDeals.tsx
+index af675f32..58011954 100644
+--- b/packages/vite-express-prisma/src/pages/AdminDeals.tsx
++++ a/packages/vite-express-prisma/src/pages/AdminDeals.tsx
+@@ -1,7 +1,8 @@
+ import { useEffect, useState } from "react";
+ import { Link, useNavigate } from "react-router-dom";
+ 
+-type Deal = { id: string; name: string; description: string; address: string; status: string };
++type Contact = { id: string; name: string; email: string; phone: string };
++type Deal = { id: string; name: string; description: string; address: string; status: string; contacts?: Contact[] };
+ 
+ export default function AdminDeals() {
+   const navigate = useNavigate();
+@@ -34,7 +35,7 @@ export default function AdminDeals() {
+     <main>
+       <h1>Admin — Deals</h1>
+       <p>
+-        <Link to="/admin">← Back to admin</Link> | <Link to="/">Home</Link>
++        <Link to="/admin">← Back to admin</Link> | <Link to="/admin/contacts">Contacts</Link> | <Link to="/">Home</Link>
+         {" · "}
+         <button type="button" onClick={() => { fetch("/api/admin/logout", { method: "POST", credentials: "include" }); sessionStorage.removeItem("admin"); navigate("/"); }} style={{ background: "none", border: "none", color: "inherit", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Log out</button>
+       </p>
+@@ -45,6 +46,9 @@ export default function AdminDeals() {
+               <strong>{d.name}</strong>
+               <p>{d.description}</p>
+               <p><small>{d.address} · Status: {d.status}</small></p>
++              {d.contacts && d.contacts.length > 0 && (
++                <p><small>Contacts: {d.contacts.map((c) => c.name).join(", ")}</small></p>
++              )}
+               <p>
+                 <Link to={`/admin/deals/${d.id}`}>Edit</Link>
+                 {" · "}
+diff --git b/packages/vite-express-prisma/src/pages/AdminEditDeal.tsx a/packages/vite-express-prisma/src/pages/AdminEditDeal.tsx
+index 94f08c49..afe27fa8 100644
+--- b/packages/vite-express-prisma/src/pages/AdminEditDeal.tsx
++++ a/packages/vite-express-prisma/src/pages/AdminEditDeal.tsx
+@@ -1,7 +1,8 @@
+ import { useEffect, useState } from "react";
+ import { Link, useNavigate, useParams } from "react-router-dom";
+ 
+-type Deal = { id: string; name: string; description: string; address: string; status: string };
++type Contact = { id: string; name: string; email: string; phone: string };
++type Deal = { id: string; name: string; description: string; address: string; status: string; contacts: Contact[] };
+ 
+ export default function AdminEditDeal() {
+   const navigate = useNavigate();
+@@ -10,6 +11,8 @@ export default function AdminEditDeal() {
+   const [description, setDescription] = useState("");
+   const [address, setAddress] = useState("");
+   const [status, setStatus] = useState("pending");
++  const [contacts, setContacts] = useState<Contact[]>([]);
++  const [allContacts, setAllContacts] = useState<Contact[]>([]);
+   const [loading, setLoading] = useState(true);
+ 
+   useEffect(() => {
+@@ -17,18 +20,29 @@ export default function AdminEditDeal() {
+       navigate("/admin");
+       return;
+     }
+-    fetch("/api/deals", { credentials: "include" })
+-      .then((r) => (r.ok ? r.json() : []))
+-      .then((deals: Deal[]) => {
+-        const d = deals.find((x) => x.id === id);
+-        if (d) {
+-          setName(d.name);
+-          setDescription(d.description);
+-          setAddress(d.address);
+-          setStatus(d.status);
+-        }
+-      })
+-      .finally(() => setLoading(false));
++    Promise.all([
++      fetch("/api/deals", { credentials: "include" }),
++      fetch("/api/contacts", { credentials: "include" }),
++    ]).then(([dr, cr]) => {
++      if (dr.status === 401 || cr.status === 401) {
++        sessionStorage.removeItem("admin");
++        navigate("/admin");
++        return;
++      }
++      return Promise.all([dr.json(), cr.json()]);
++    }).then((data) => {
++      if (!data) return;
++      const [deals, contactsList]: [Deal[], Contact[]] = data;
++      const d = deals.find((x) => x.id === id);
++      if (d) {
++        setName(d.name);
++        setDescription(d.description);
++        setAddress(d.address);
++        setStatus(d.status);
++        setContacts(d.contacts || []);
++      }
++      setAllContacts(contactsList);
++    }).catch(() => {}).finally(() => setLoading(false));
+   }, [id, navigate]);
+ 
+   const save = (e: React.FormEvent) => {
+@@ -41,6 +55,26 @@ export default function AdminEditDeal() {
+     }).then((r) => { if (r.status === 401) sessionStorage.removeItem("admin"); else if (r.ok) navigate("/admin/deals"); });
+   };
+ 
++  const addContact = (contactId: string) => {
++    fetch(`/api/deals/${id}/contacts`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      credentials: "include",
++      body: JSON.stringify({ contactId }),
++    }).then((r) => r.ok && (() => {
++      const c = allContacts.find((x) => x.id === contactId);
++      if (c) setContacts((prev) => [...prev, c]);
++    })());
++  };
++
++  const removeContact = (contactId: string) => {
++    fetch(`/api/deals/${id}/contacts/${contactId}`, { method: "DELETE", credentials: "include" }).then((r) =>
++      r.ok && setContacts((prev) => prev.filter((c) => c.id !== contactId))
++    );
++  };
++
++  const availableToAdd = allContacts.filter((c) => !contacts.some((x) => x.id === c.id));
++
+   if (loading) return <p>Loading...</p>;
+ 
+   return (
+@@ -65,6 +99,25 @@ export default function AdminEditDeal() {
+         </div>
+         <button type="submit">Save</button>
+       </form>
++      <h2>Contacts on this deal</h2>
++      <ul style={{ listStyle: "none", padding: 0 }}>
++        {contacts.map((c) => (
++          <li key={c.id} style={{ marginBottom: "0.5rem" }}>
++            {c.name} ({c.email}) — <button type="button" onClick={() => removeContact(c.id)} style={{ fontSize: "0.875rem" }}>Remove</button>
++          </li>
++        ))}
++      </ul>
++      {availableToAdd.length > 0 && (
++        <>
++          <h3>Add existing contact</h3>
++          <select onChange={(e) => { const v = e.target.value; if (v) addContact(v); e.target.value = ""; }}>
++            <option value="">— Select contact —</option>
++            {availableToAdd.map((c) => (
++              <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
++            ))}
++          </select>
++        </>
++      )}
+     </main>
+   );
+ }
+diff --git b/packages/vite-express-prisma/src/pages/NewDeal.tsx a/packages/vite-express-prisma/src/pages/NewDeal.tsx
+index 90b65fca..385850c2 100644
+--- b/packages/vite-express-prisma/src/pages/NewDeal.tsx
++++ a/packages/vite-express-prisma/src/pages/NewDeal.tsx
+@@ -6,15 +6,26 @@ export default function NewDeal() {
+   const [name, setName] = useState("");
+   const [description, setDescription] = useState("");
+   const [address, setAddress] = useState("");
++  const [contactName, setContactName] = useState("");
++  const [contactEmail, setContactEmail] = useState("");
++  const [contactPhone, setContactPhone] = useState("");
+   const [loading, setLoading] = useState(false);
+ 
+   const submit = (e: React.FormEvent) => {
+     e.preventDefault();
+     setLoading(true);
++    const body: { name: string; description: string; address: string; contact?: { name: string; email: string; phone: string } } = {
++      name,
++      description,
++      address,
++    };
++    if (contactName && contactEmail && contactPhone) {
++      body.contact = { name: contactName, email: contactEmail, phone: contactPhone };
++    }
+     fetch("/api/deals", {
+       method: "POST",
+       headers: { "Content-Type": "application/json" },
+-      body: JSON.stringify({ name, description, address }),
++      body: JSON.stringify(body),
+     })
+       .then(() => navigate("/thank-you"))
+       .finally(() => setLoading(false));
+@@ -29,6 +40,10 @@ export default function NewDeal() {
+         <div><label>Deal / Customer name</label><input value={name} onChange={(e) => setName(e.target.value)} required /></div>
+         <div><label>Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} required /></div>
+         <div><label>Address</label><input value={address} onChange={(e) => setAddress(e.target.value)} required /></div>
++        <h2>Primary Contact (optional)</h2>
++        <div><label>Contact name</label><input value={contactName} onChange={(e) => setContactName(e.target.value)} /></div>
++        <div><label>Contact email</label><input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} /></div>
++        <div><label>Contact phone</label><input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} /></div>
+         <button type="submit" disabled={loading}>{loading ? "Submitting..." : "Submit Deal"}</button>
+       </form>
+     </main>

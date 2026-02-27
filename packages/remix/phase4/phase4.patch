@@ -1,0 +1,250 @@
+diff --git b/packages/remix/app/routes/admin.contacts._index.tsx a/packages/remix/app/routes/admin.contacts._index.tsx
+new file mode 100644
+index 00000000..dd0c584f
+--- /dev/null
++++ a/packages/remix/app/routes/admin.contacts._index.tsx
+@@ -0,0 +1,55 @@
++import { Link, useLoaderData, useFetcher } from "@remix-run/react";
++import type { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node";
++import { redirect } from "@remix-run/node";
++import { db } from "~/db.server";
++import { isAdminLoggedIn } from "~/session.server";
++
++export async function loader({ request }: LoaderFunctionArgs) {
++  if (!(await isAdminLoggedIn(request))) return redirect("/admin");
++  const contacts = await db.contact.findMany({ orderBy: { name: "asc" } });
++  return { contacts };
++}
++
++export async function action({ request }: ActionFunctionArgs) {
++  if (!(await isAdminLoggedIn(request))) return redirect("/admin");
++  const form = await request.formData();
++  const intent = form.get("intent");
++  if (intent === "create") {
++    const name = form.get("name") as string;
++    const email = form.get("email") as string;
++    const phone = form.get("phone") as string;
++    if (name && email && phone) {
++      await db.contact.create({ data: { name, email, phone } });
++    }
++  }
++  return redirect("/admin/contacts");
++}
++
++export default function AdminContacts() {
++  const { contacts } = useLoaderData<typeof loader>();
++  const fetcher = useFetcher();
++
++  return (
++    <main>
++      <h1>Admin — Contacts</h1>
++      <p><Link to="/admin">← Back to admin</Link> | <Link to="/admin/deals">Deals</Link> | <Link to="/">Home</Link></p>
++      <h2>Create contact</h2>
++      <fetcher.Form method="post">
++        <input type="hidden" name="intent" value="create" />
++        <div><label>Name</label><input name="name" required /></div>
++        <div><label>Email</label><input type="email" name="email" required /></div>
++        <div><label>Phone</label><input name="phone" required /></div>
++        <button type="submit" disabled={fetcher.state === "submitting"}>Create</button>
++      </fetcher.Form>
++      <h2>All contacts</h2>
++      <ul style={{ listStyle: "none", padding: 0 }}>
++        {contacts.map((c) => (
++          <li key={c.id} style={{ border: "1px solid #ccc", padding: "1rem", marginBottom: "0.5rem", borderRadius: 4 }}>
++            <strong>{c.name}</strong>
++            <p><small>{c.email} · {c.phone}</small></p>
++          </li>
++        ))}
++      </ul>
++    </main>
++  );
++}
+diff --git b/packages/remix/app/routes/admin.deals.$id.tsx a/packages/remix/app/routes/admin.deals.$id.tsx
+index 356bb85f..12ceec47 100644
+--- b/packages/remix/app/routes/admin.deals.$id.tsx
++++ a/packages/remix/app/routes/admin.deals.$id.tsx
+@@ -6,9 +6,17 @@ import { isAdminLoggedIn } from "~/session.server";
+ 
+ export async function loader({ request, params }: LoaderFunctionArgs) {
+   if (!(await isAdminLoggedIn(request))) return redirect("/admin");
+-  const deal = await db.deal.findUnique({ where: { id: params.id! } });
++  const [deal, allContacts] = await Promise.all([
++    db.deal.findUnique({
++      where: { id: params.id! },
++      include: { contacts: { include: { contact: true } } },
++    }),
++    db.contact.findMany({ orderBy: { name: "asc" } }),
++  ]);
+   if (!deal) throw new Response("Not found", { status: 404 });
+-  return { deal };
++  const contacts = deal.contacts.map((dc) => dc.contact);
++  const availableToAdd = allContacts.filter((c) => !contacts.some((x) => x.id === c.id));
++  return { deal: { ...deal, contacts }, availableToAdd };
+ }
+ 
+ export async function action({ request, params }: ActionFunctionArgs) {
+@@ -28,11 +36,19 @@ export async function action({ request, params }: ActionFunctionArgs) {
+     });
+     return redirect("/admin/deals");
+   }
++  if (intent === "addContact") {
++    const contactId = form.get("contactId") as string;
++    if (contactId) await db.dealContact.create({ data: { dealId, contactId } });
++  }
++  if (intent === "removeContact") {
++    const contactId = form.get("contactId") as string;
++    if (contactId) await db.dealContact.delete({ where: { dealId_contactId: { dealId, contactId } } });
++  }
+   return redirect(`/admin/deals/${dealId}`);
+ }
+ 
+ export default function AdminEditDeal() {
+-  const { deal } = useLoaderData<typeof loader>();
++  const { deal, availableToAdd } = useLoaderData<typeof loader>();
+   const fetcher = useFetcher();
+ 
+   return (
+@@ -54,6 +70,34 @@ export default function AdminEditDeal() {
+         </div>
+         <button type="submit">Save</button>
+       </form>
++      <h2>Contacts on this deal</h2>
++      <ul style={{ listStyle: "none", padding: 0 }}>
++        {deal.contacts.map((c) => (
++          <li key={c.id} style={{ marginBottom: "0.5rem" }}>
++            {c.name} ({c.email}) —{" "}
++            <fetcher.Form method="post" style={{ display: "inline" }}>
++              <input type="hidden" name="intent" value="removeContact" />
++              <input type="hidden" name="contactId" value={c.id} />
++              <button type="submit" style={{ fontSize: "0.875rem" }}>Remove</button>
++            </fetcher.Form>
++          </li>
++        ))}
++      </ul>
++      {availableToAdd.length > 0 && (
++        <>
++          <h3>Add existing contact</h3>
++          <fetcher.Form method="post">
++            <input type="hidden" name="intent" value="addContact" />
++            <select name="contactId" required>
++              <option value="">— Select contact —</option>
++              {availableToAdd.map((c) => (
++                <option key={c.id} value={c.id}>{c.name} ({c.email})</option>
++              ))}
++            </select>
++            <button type="submit">Add</button>
++          </fetcher.Form>
++        </>
++      )}
+     </main>
+   );
+ }
+diff --git b/packages/remix/app/routes/admin.deals._index.tsx a/packages/remix/app/routes/admin.deals._index.tsx
+index e518a0d0..6d4f8b91 100644
+--- b/packages/remix/app/routes/admin.deals._index.tsx
++++ a/packages/remix/app/routes/admin.deals._index.tsx
+@@ -6,8 +6,11 @@ import { getAdminSession, isAdminLoggedIn, destroySession, commitSession } from
+ 
+ export async function loader({ request }: LoaderFunctionArgs) {
+   if (!(await isAdminLoggedIn(request))) return redirect("/admin");
+-  const deals = await db.deal.findMany({ orderBy: { createdAt: "desc" } });
+-  return { deals };
++  const deals = await db.deal.findMany({
++    orderBy: { createdAt: "desc" },
++    include: { contacts: { include: { contact: true } } },
++  });
++  return { deals: deals.map((d) => ({ ...d, contacts: d.contacts.map((dc) => dc.contact) })) };
+ }
+ 
+ export async function action({ request }: ActionFunctionArgs) {
+@@ -32,7 +35,7 @@ export default function AdminDeals() {
+   return (
+     <main>
+       <h1>Admin — Deals</h1>
+-      <p><Link to="/admin">← Back to admin</Link> | <Link to="/">Home</Link></p>
++      <p><Link to="/admin">← Back to admin</Link> | <Link to="/admin/contacts">Contacts</Link> | <Link to="/">Home</Link></p>
+       <fetcher.Form method="post"><input type="hidden" name="intent" value="logout" /><button type="submit">Log out</button></fetcher.Form>
+       <ul style={{ listStyle: "none", padding: 0 }}>
+         {deals.map((d) => (
+@@ -40,6 +43,7 @@ export default function AdminDeals() {
+             <strong>{d.name}</strong>
+             <p>{d.description}</p>
+             <p><small>{d.address} · Status: {d.status}</small></p>
++            {d.contacts?.length > 0 && <p><small>Contacts: {d.contacts.map((c: { name: string }) => c.name).join(", ")}</small></p>}
+             <p>
+               <Link to={`/admin/deals/${d.id}`}>Edit</Link>
+               {" · "}
+diff --git b/packages/remix/app/routes/deals.new.tsx a/packages/remix/app/routes/deals.new.tsx
+index a3250e2f..6665c81f 100644
+--- b/packages/remix/app/routes/deals.new.tsx
++++ a/packages/remix/app/routes/deals.new.tsx
+@@ -8,8 +8,22 @@ export async function action({ request }: ActionFunctionArgs) {
+   const name = form.get("name") as string;
+   const description = form.get("description") as string;
+   const address = form.get("address") as string;
++  const contactName = form.get("contactName") as string;
++  const contactEmail = form.get("contactEmail") as string;
++  const contactPhone = form.get("contactPhone") as string;
+   if (!name || !description || !address) return { error: "All fields required" };
+-  await db.deal.create({ data: { name, description, address, status: "pending" } });
++  const data: { name: string; description: string; address: string; status: string; contacts?: { create: { contact: { create: { name: string; email: string; phone: string } } }[] } } = {
++    name,
++    description,
++    address,
++    status: "pending",
++  };
++  if (contactName && contactEmail && contactPhone) {
++    data.contacts = {
++      create: [{ contact: { create: { name: contactName, email: contactEmail, phone: contactPhone } } }],
++    };
++  }
++  await db.deal.create({ data });
+   return redirect("/thank-you");
+ }
+ 
+@@ -27,6 +41,10 @@ export default function NewDeal() {
+         <div><label>Deal / Customer name</label><input name="name" required /></div>
+         <div><label>Description</label><textarea name="description" required /></div>
+         <div><label>Address</label><input name="address" required /></div>
++        <h2>Primary Contact (optional)</h2>
++        <div><label>Contact name</label><input name="contactName" /></div>
++        <div><label>Contact email</label><input type="email" name="contactEmail" /></div>
++        <div><label>Contact phone</label><input type="tel" name="contactPhone" /></div>
+         {actionData?.error && <p style={{ color: "red" }}>{actionData.error}</p>}
+         <button type="submit" disabled={isSubmitting}>{isSubmitting ? "Submitting..." : "Submit Deal"}</button>
+       </form>
+diff --git b/packages/remix/prisma/schema.prisma a/packages/remix/prisma/schema.prisma
+index 6bc7cf85..8d79689c 100644
+--- b/packages/remix/prisma/schema.prisma
++++ a/packages/remix/prisma/schema.prisma
+@@ -15,6 +15,16 @@ model AdminUser {
+   updatedAt DateTime @updatedAt
+ }
+ 
++model Contact {
++  id        String   @id @default(cuid())
++  name      String
++  email     String
++  phone     String
++  createdAt DateTime @default(now())
++  updatedAt DateTime @updatedAt
++  deals     DealContact[]
++}
++
+ model Deal {
+   id          String   @id @default(cuid())
+   name        String
+@@ -23,4 +33,13 @@ model Deal {
+   status      String   @default("pending")
+   createdAt   DateTime @default(now())
+   updatedAt   DateTime @updatedAt
++  contacts    DealContact[]
++}
++
++model DealContact {
++  dealId    String
++  contactId String
++  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
++  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
++  @@id([dealId, contactId])
+ }
