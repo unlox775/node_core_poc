@@ -56,7 +56,18 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 ## Phase 4: Add Contact Model
 
-Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+### Phase 4 Plan
+
+**Why this stack shines here**: Vite + Express + AdminJS is one of the smallest Phase 4 patches. Everything lives in one place: `api/index.ts` has your Express routes and AdminJS setup. Add Contact and DealContact to the schema, add two lines to the AdminJS `resources` array, and extend the POST /api/deals handler — that's it. No NestJS modules, no separate admin routes. AdminJS generates the admin UI from Prisma. The tradeoff: less structure than NestJS, but fewer files to touch.
+
+**What the patch adds** (CliffsNotes):
+
+1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
+2. **AdminJS** — Add Contact and DealContact to `resources` in `api/index.ts`.
+3. **POST /api/deals** — Accept optional `contact`; create deal with nested contact when provided.
+4. **NewDeal form** — Optional primary contact fields (name, email, phone).
+
+Seed is unchanged. Run `db:push` to apply the schema.
 
 To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md).
 
@@ -65,7 +76,7 @@ To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](ph
 ```bash
 git apply packages/vite-express-prisma-adminjs/phase4/phase4.patch
 cd packages/vite-express-prisma-adminjs
-npm run db:reseed
+npm run db:push
 npm run dev
 ```
 
@@ -76,7 +87,7 @@ Or run `./packages/vite-express-prisma-adminjs/phase4/apply.sh` from repo root.
 ```bash
 git apply -R packages/vite-express-prisma-adminjs/phase4/phase4.patch
 cd packages/vite-express-prisma-adminjs
-npm run db:reseed
+npm run db:push
 ```
 
 **With Phase 4 applied:**

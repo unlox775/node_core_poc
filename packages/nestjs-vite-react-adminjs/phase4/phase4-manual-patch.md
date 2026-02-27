@@ -74,13 +74,7 @@ In the `resources` array of `new AdminJS({ ... })`, add after AdminUser:
 - In `create()`, accept optional `contact`, build `Prisma.DealCreateInput` with optional `contacts.create` when contact is present, and use `include: { contacts: { include: { contact: true } } }` and map result.
 - Add methods: `addContact(dealId, contactId)` (dealContact.create) and `removeContact(dealId, contactId)` (dealContact.delete with `dealId_contactId`).
 
-## 5. Seed
-
-**File:** `prisma/seed.ts`
-
-Replace the block that creates the two deals with: create two contacts (Bob Smith, Bob Jones), create first deal, create DealContact linking d1 and c1, create second deal, create DealContact linking d2 and c2.
-
-## 6. NewDeal form
+## 5. NewDeal form
 
 **File:** `src/pages/NewDeal.tsx`
 
@@ -93,6 +87,6 @@ Replace the block that creates the two deals with: create two contacts (Bob Smit
 After editing, run:
 
 ```bash
-npm run db:reseed
+npm run db:push
 npm run dev
 ```

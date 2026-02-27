@@ -172,43 +172,6 @@ index 6bc7cf8..8d79689 100644
 +  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 +  @@id([dealId, contactId])
  }
-diff --git a/packages/nestjs-vite-react-adminjs/prisma/seed.ts b/packages/nestjs-vite-react-adminjs/prisma/seed.ts
-index 8a37ac5..c46cb47 100644
---- a/packages/nestjs-vite-react-adminjs/prisma/seed.ts
-+++ b/packages/nestjs-vite-react-adminjs/prisma/seed.ts
-@@ -13,7 +13,13 @@ async function main() {
- 
-   const existingDeals = await prisma.deal.count();
-   if (existingDeals === 0) {
--    await prisma.deal.create({
-+    const c1 = await prisma.contact.create({
-+      data: { name: "Bob Smith", email: "bob@example.com", phone: "801-555-0001" },
-+    });
-+    const c2 = await prisma.contact.create({
-+      data: { name: "Bob Jones", email: "bobjones@example.com", phone: "801-555-0002" },
-+    });
-+    const d1 = await prisma.deal.create({
-       data: {
-         name: "Bob's Pianos",
-         description: "Need the new piano moved on March 31st at 8pm",
-@@ -21,7 +27,8 @@ async function main() {
-         status: "pending",
-       },
-     });
--    await prisma.deal.create({
-+    await prisma.dealContact.create({ data: { dealId: d1.id, contactId: c1.id } });
-+    const d2 = await prisma.deal.create({
-       data: {
-         name: "Bob Jones — Roof Trusses",
-         description: "New roof trusses for his new house",
-@@ -29,6 +36,7 @@ async function main() {
-         status: "pending",
-       },
-     });
-+    await prisma.dealContact.create({ data: { dealId: d2.id, contactId: c2.id } });
-   }
-   console.log("Seed completed.");
- }
 diff --git a/packages/nestjs-vite-react-adminjs/src/pages/NewDeal.tsx b/packages/nestjs-vite-react-adminjs/src/pages/NewDeal.tsx
 index 90b65fc..385850c 100644
 --- a/packages/nestjs-vite-react-adminjs/src/pages/NewDeal.tsx

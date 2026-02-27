@@ -52,9 +52,17 @@ Complete step-by-step demo. Everything you need is here.
 
 ## Phase 4: Add Contact Model (Scaffolding)
 
-Phase 4 shows how Redwood's scaffolding works. You add a model to Prisma first, then run `yarn rw generate scaffold Contact` to generate SDL, services, and pages. An integration patch then wires Contact into the Deal flow.
+### Phase 4 Plan
 
-### Why add the model to Prisma first?
+**Why this stack**: RedwoodJS has the best scaffolding of the seven POCs. `yarn rw generate scaffold Contact` reads your Prisma schema and generates GraphQL SDL, service, cells, pages, and routes. You get a working CRUD UI in seconds. The tradeoff: Redwood is GraphQL-first and convention-heavy. You work *with* the framework, not around it. If you like batteries-included and fast iteration, this is the standout.
+
+**What Phase 4 does** (CliffsNotes):
+
+1. **Schema (initial patch)** — Add Contact model to Prisma (no DealContact yet).
+2. **Scaffold** — `yarn rw generate scaffold Contact` → SDL, service, cells, pages, routes for `/contacts`.
+3. **Integration patch** — DealContact join table; Deal.contacts relation; addContactToDeal/removeContactFromDeal mutations; admin Contacts page; primary contact on deal form; add/remove on deal edit.
+
+**Why add the model to Prisma first?**
 
 Redwood does **not** have a "generate model" command. The Prisma schema (`api/db/schema.prisma`) is the source of truth. You define models there; Prisma generates the client and migrations. Redwood's `generate scaffold` reads from the schema — it assumes the model already exists. So the flow is: define model → push schema → scaffold.
 

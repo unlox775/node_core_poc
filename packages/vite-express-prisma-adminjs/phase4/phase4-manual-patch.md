@@ -20,13 +20,7 @@ In the `resources` array of `new AdminJS({ ... })`, add Contact and DealContact 
 
 Change the handler to read `contact` from req.body. Build a `data` object with optional `contacts: { create: [{ contact: { create: { name, email, phone } } }] }` when contact has name, email, phone. Use `prisma.deal.create({ data, include: { contacts: { include: { contact: true } } } })` and return the deal with contacts mapped to the contact objects.
 
-## 4. Seed
-
-**File:** `prisma/seed.ts`
-
-Create two contacts (Bob Smith, Bob Jones), create the two deals, then create DealContact rows linking d1–c1 and d2–c2.
-
-## 5. NewDeal form
+## 4. NewDeal form
 
 **File:** `src/pages/NewDeal.tsx`
 
@@ -37,6 +31,6 @@ Add state for contactName, contactEmail, contactPhone. In submit, add optional `
 After editing, run:
 
 ```bash
-npm run db:reseed
+npm run db:push
 npm run dev
 ```

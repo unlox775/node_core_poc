@@ -51,7 +51,19 @@ Complete step-by-step demo. Everything you need is here.
 
 ## Phase 4: Add Contact Model
 
-Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+### Phase 4 Plan
+
+**Why this stack**: Remix is page-centric — loaders fetch data, actions handle mutations. There's no separate API layer; your routes *are* the data layer. Phase 4 adds Contact via loaders and actions in route files. Each admin page (contacts list, deal edit) has its own loader/action. The tradeoff: you write each route by hand, but the model is simple and explicit. Web standards (forms, fetches) are built in. No scaffolding, but the patterns are clear.
+
+**What the patch adds** (CliffsNotes):
+
+1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
+2. **admin.contacts._index** — Loader lists contacts; action creates contact.
+3. **admin.deals.$id** — Loader includes contacts and available-to-add; actions for addContact/removeContact.
+4. **admin.deals._index** — Loader includes contacts on deals.
+5. **deals.new** — Action accepts optional contact; create deal with nested contact.
+6. **NewDeal form** — Optional primary contact fields (name, email, phone).
+7. **Seed** — Reseed to apply schema and reset data.
 
 To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md) for step-by-step edit instructions with copy-paste code blocks.
 

@@ -78,9 +78,19 @@ Complete step-by-step demo. No external references — everything you need is he
 
 ## Phase 4: Add Contact Model
 
-Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+### Phase 4 Plan
 
-To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md) for step-by-step edit instructions with copy-paste code blocks.
+**Why this stack**: Vite + Express + Prisma is the "minimal glue" option. No NestJS modules, no AdminJS — you add routes to `api/index.ts` and React pages to the frontend. Phase 4 is explicit: schema → Express CRUD routes → React forms and lists. No magic. The tradeoff: more manual wiring than T3 or Redwood, but full control. If you want to understand every line of code and avoid framework assumptions, this is it.
+
+**What the patch adds** (CliffsNotes):
+
+1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
+2. **api/index.ts** — Extend POST /api/deals to accept optional `contact`; add GET/POST /api/contacts; add POST/DELETE for deal–contact links. All routes use `requireAdmin` where appropriate.
+3. **App.tsx** — New AdminContacts route; update AdminDeals and AdminEditDeal with contact list and add/remove.
+4. **NewDeal form** — Optional primary contact fields (name, email, phone).
+5. **Seed** — Reseed to apply schema and reset data.
+
+See `phase4/README.md` for details. To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md) for step-by-step edit instructions with copy-paste code blocks.
 
 **To apply Phase 4** (from repo root):
 

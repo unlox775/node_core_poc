@@ -72,7 +72,17 @@ Complete step-by-step demo. Everything you need is here.
 
 ## Phase 4: Add Contact Model
 
-Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+### Phase 4 Plan
+
+**Why this stack**: T3 Stack (Next.js + tRPC + Prisma) gives you end-to-end type safety. Add a Prisma model, add a tRPC router, and your React components get typed queries and mutations automatically. No OpenAPI, no manual types. Phase 4 is: schema → migrate → contact router → admin pages. The tradeoff: you write the admin UI (list, form, edit) by hand — T3 doesn't scaffold admin. But the data layer is fast and type-safe.
+
+**What the patch adds** (CliffsNotes):
+
+1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
+2. **tRPC router** — contact.list, contact.create; extend deal router with addContact/removeContact.
+3. **Admin pages** — AdminContacts (list + create); AdminEditDeal (add/remove contacts).
+4. **NewDeal form** — Optional primary contact fields (name, email, phone).
+5. **Seed** — Reseed to apply schema and reset data.
 
 To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md) for step-by-step edit instructions with copy-paste code blocks.
 

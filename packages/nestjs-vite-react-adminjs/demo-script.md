@@ -56,7 +56,19 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 ## Phase 4: Add Contact Model
 
-Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+### Phase 4 Plan
+
+**Why this stack shines here**: NestJS + AdminJS makes adding a new model very low-friction. AdminJS reads your Prisma schema and auto-generates full CRUD — there's no scaffolding step and no custom admin UI to build. You define the model, register it in AdminJS, and you're done. The tradeoff: you're writing backend code (schema, services, controller) and a couple lines in `main.ts`, but the admin panel appears for free. This is the "add a few lines, get full admin" workflow.
+
+**What the patch adds** (CliffsNotes):
+
+1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
+2. **AdminJS** — Add Contact and DealContact to `resources` in `main.ts`; AdminJS generates list/create/edit/delete.
+3. **Deals API** — Create accepts optional `contact`; add `addContact` / `removeContact` endpoints.
+4. **DealsService** — Include contacts in `findAll`; create with nested contact; addContact/removeContact.
+5. **NewDeal form** — Optional primary contact fields (name, email, phone).
+
+Seed is unchanged — deals can exist without contacts. Run `db:push` to apply the schema.
 
 To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md).
 
@@ -65,7 +77,7 @@ To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](ph
 ```bash
 git apply packages/nestjs-vite-react-adminjs/phase4/phase4.patch
 cd packages/nestjs-vite-react-adminjs
-npm run db:reseed
+npm run db:push
 npm run dev
 ```
 
@@ -76,7 +88,7 @@ Or run `./packages/nestjs-vite-react-adminjs/phase4/apply.sh` from repo root.
 ```bash
 git apply -R packages/nestjs-vite-react-adminjs/phase4/phase4.patch
 cd packages/nestjs-vite-react-adminjs
-npm run db:reseed
+npm run db:push
 ```
 
 **With Phase 4 applied:**

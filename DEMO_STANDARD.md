@@ -168,6 +168,11 @@ In the demo flow, optionally: try to hit an admin endpoint without logging in (e
 
 **Purpose**: Phase 4 demonstrates *the process and effort* of adding a new model with that framework. The default codebase is Phase 3 only (Deal + AdminUser, no Contact). You then apply the Phase 4 change (patch, scaffold, or manual steps) to add Contact and Deal–Contact. Phase 5 simply verifies the result. This shows "with this framework, here's what it takes to add a new model."
 
+**Phase 4 Plan** (in each demo script): Before the apply steps, include a "Phase 4 Plan" that:
+- Talks about the framework — why this stack is good (or not) for adding models, what the workflow feels like, where the edits live.
+- Summarizes what Phase 4 adds: a numbered CliffsNotes list of the changes (schema, API, admin UI, form, etc.). Size is proportional to the patch — minimal patch = short list; big patch = more detail.
+- Sells the reader on the framework. Phase 4 is where the demo earns its keep: "this is what it's like to live and work with this stack."
+
 15. Add the Contact model in whatever way that framework does it:
     - Schema / migration (or equivalent)
     - API routes or data layer for contacts
@@ -195,7 +200,9 @@ Each package has a `demo-script.md` (or equivalent) that:
 
 1. Mirrors the structure of this DEMO_STANDARD.
 2. Uses **that framework's** commands, paths, and conventions.
-3. For Phase 4 (Add New Model): provides the actual steps — whether that's copy-paste code blocks, CLI commands, or both.
+3. For Phase 4 (Add New Model):
+   - Includes a **Phase 4 Plan** (see above): framework-focused walkthrough, CliffsNotes of changes.
+   - When mentioning `phase4-manual-patch.md`: include a **CliffsNotes** — a numbered list of what the patch does (schema, API, UI, etc.). Length proportional to patch size: minimal patch = 3–5 bullets; large patch = more detail.
 4. Does not impose cross-framework patterns. What Prisma does is Prisma; what Redwood does is Redwood.
 
 When DEMO_STANDARD.md is updated, each `demo-script.md` should be updated to stay in sync.

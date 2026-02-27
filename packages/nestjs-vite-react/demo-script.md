@@ -51,7 +51,21 @@ Complete step-by-step demo. Everything you need is here.
 
 ## Phase 4: Add Contact Model
 
-Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+### Phase 4 Plan
+
+**Why this stack**: NestJS without AdminJS means you build every layer yourself — schema, module, service, controller, and admin UI. There's no scaffolding. The upside: clear separation, explicit patterns, strong typing. Every file has a purpose. The downside: more boilerplate. ContactsModule mirrors DealsModule; AdminContacts, AdminDeals, and AdminEditDeal are hand-written. If you value structure and control over speed, this is the tradeoff.
+
+**What the patch adds** (CliffsNotes):
+
+1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
+2. **ContactsModule** — contacts.controller, contacts.service, contacts.module; register in AppModule.
+3. **DealsController** — Accept optional `contact` on create; add `POST :id/contacts` and `DELETE :id/contacts/:contactId`.
+4. **DealsService** — findAll includes contacts; create with nested contact; addContact/removeContact.
+5. **AdminContacts** — New page: list contacts, create form.
+6. **AdminDeals** — Link to contacts; show contact count.
+7. **AdminEditDeal** — Add/remove contacts on deal edit page.
+8. **NewDeal form** — Optional primary contact fields (name, email, phone).
+9. **Seed** — Reseed to apply schema and reset data.
 
 To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md) for step-by-step edit instructions with copy-paste code blocks.
 

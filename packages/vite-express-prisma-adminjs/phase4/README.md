@@ -14,7 +14,7 @@ Then:
 
 ```bash
 cd packages/vite-express-prisma-adminjs
-npm run db:reseed
+npm run db:push   # apply new schema (seed unchanged)
 npm run dev
 ```
 
@@ -30,7 +30,7 @@ Then:
 
 ```bash
 cd packages/vite-express-prisma-adminjs
-npm run db:reseed
+npm run db:push   # schema back to Phase 3
 ```
 
 ## What Phase 4 Adds
