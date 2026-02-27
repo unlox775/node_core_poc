@@ -1,0 +1,416 @@
+diff --git a/packages/redwoodjs/api/db/schema.prisma b/packages/redwoodjs/api/db/schema.prisma
+--- a/packages/redwoodjs/api/db/schema.prisma
++++ b/packages/redwoodjs/api/db/schema.prisma
+@@ -15,14 +15,23 @@ model Contact {
+   phone     String
+   createdAt DateTime @default(now())
+   updatedAt DateTime @updatedAt
++  deals     DealContact[]
+ }
+ 
++model DealContact {
++  dealId    String
++  contactId String
++  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
++  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
++  @@id([dealId, contactId])
++}
++
+ model Deal {
+   id          String   @id @default(cuid())
+   name        String
+   description String
+   address     String
+   status      String   @default("pending")
+   createdAt   DateTime @default(now())
+   updatedAt   DateTime @updatedAt
++  contacts    DealContact[]
+ }
+diff --git a/packages/redwoodjs/api/src/graphql/contacts.sdl.ts b/packages/redwoodjs/api/src/graphql/contacts.sdl.ts
+--- a/packages/redwoodjs/api/src/graphql/contacts.sdl.ts
++++ b/packages/redwoodjs/api/src/graphql/contacts.sdl.ts
+@@ -10,10 +10,10 @@ export const schema = gql`
+   }
+ 
+   type Query {
+-    contacts: [Contact!]! @requireAuth
+-    contact(id: String!): Contact @requireAuth
++    contacts: [Contact!]!
++    contact(id: String!): Contact
+   }
+ 
+   input CreateContactInput {
+@@ -30,8 +30,8 @@ export const schema = gql`
+   }
+ 
+   type Mutation {
+-    createContact(input: CreateContactInput!): Contact! @requireAuth
+-    updateContact(id: String!, input: UpdateContactInput!): Contact! @requireAuth
+-    deleteContact(id: String!): Contact! @requireAuth
++    createContact(input: CreateContactInput!): Contact!
++    updateContact(id: String!, input: UpdateContactInput!): Contact!
++    deleteContact(id: String!): Contact!
+   }
+ `
+diff --git a/packages/redwoodjs/api/src/graphql/deals.sdl.ts b/packages/redwoodjs/api/src/graphql/deals.sdl.ts
+--- a/packages/redwoodjs/api/src/graphql/deals.sdl.ts
++++ b/packages/redwoodjs/api/src/graphql/deals.sdl.ts
+@@ -1,4 +1,11 @@
+ export const schema = `
++  type Contact {
++    id: String!
++    name: String!
++    email: String!
++    phone: String!
++  }
++
+   type Deal {
+     id: String!
+     name: String!
+@@ -7,16 +14,25 @@ export const schema = `
+     status: String!
+     createdAt: DateTime!
+     updatedAt: DateTime!
++    contacts: [Contact!]!
+   }
+ 
+   type Query {
+     deals: [Deal!]!
+   }
+ 
++  input CreateContactInput {
++    name: String!
++    email: String!
++    phone: String!
++  }
++
+   input CreateDealInput {
+     name: String!
+     description: String!
+     address: String!
++    contact: CreateContactInput
+   }
+ 
+   input UpdateDealInput {
+@@ -31,6 +47,9 @@ export const schema = `
+     createDeal(input: CreateDealInput!): Deal!
+     updateDeal(id: String!, input: UpdateDealInput!): Deal!
+     deleteDeal(id: String!): Deal!
++    addContactToDeal(dealId: String!, contactId: String!): Deal!
++    removeContactFromDeal(dealId: String!, contactId: String!): Deal!
+     adminLogin(username: String!, password: String!): AdminLoginResult!
+   }
+ `
+diff --git a/packages/redwoodjs/api/src/services/contacts/contacts.ts b/packages/redwoodjs/api/src/services/contacts/contacts.ts
+--- a/packages/redwoodjs/api/src/services/contacts/contacts.ts
++++ b/packages/redwoodjs/api/src/services/contacts/contacts.ts
+@@ -8,7 +8,7 @@ import { db } from 'src/lib/db'
+ 
+ export const contacts: QueryResolvers['contacts'] = () => {
+-  return db.contact.findMany()
++     return db.contact.findMany({ orderBy: { name: 'asc' } })
+ }
+diff --git a/packages/redwoodjs/api/src/services/admin/admin.ts b/packages/redwoodjs/api/src/services/admin/admin.ts
+--- a/packages/redwoodjs/api/src/services/admin/admin.ts
++++ b/packages/redwoodjs/api/src/services/admin/admin.ts
+@@ -1,5 +1,5 @@
+ import * as bcrypt from 'bcryptjs'
+-import { db } from 'api/src/lib/db'
++import { db } from 'src/lib/db'
+ import type { MutationResolvers } from 'types/graphql'
+ 
+ export const adminLogin: MutationResolvers['adminLogin'] = async ({
+diff --git a/packages/redwoodjs/api/src/services/deals/deals.ts b/packages/redwoodjs/api/src/services/deals/deals.ts
+--- a/packages/redwoodjs/api/src/services/deals/deals.ts
++++ b/packages/redwoodjs/api/src/services/deals/deals.ts
+@@ -1,11 +1,42 @@
+-import { db } from 'api/src/lib/db'
++import { db } from 'src/lib/db'
+ import type { QueryResolvers, MutationResolvers } from 'types/graphql'
+ 
+ export const deals: QueryResolvers['deals'] = () => {
+-  return db.deal.findMany({ orderBy: { createdAt: 'desc' } })
++  return db.deal.findMany({
++    orderBy: { createdAt: 'desc' },
++    include: { contacts: { include: { contact: true } } },
++  }).then((deals) =>
++    deals.map((d) => ({ ...d, contacts: d.contacts.map((dc) => dc.contact) }))
++  )
+ }
+ 
+ export const createDeal: MutationResolvers['createDeal'] = ({ input }) => {
+-  return db.deal.create({ data: { ...input, status: 'pending' } })
++  const { contact, ...dealData } = input
++  const data: Parameters<typeof db.deal.create>[0]['data'] = { ...dealData, status: 'pending' }
++  if (contact) {
++    data.contacts = {
++      create: [{ contact: { create: contact } }],
++    }
++  }
++  return db.deal.create({
++    data,
++    include: { contacts: { include: { contact: true } } },
++  }).then((d) => ({ ...d, contacts: d.contacts.map((dc) => dc.contact) }))
+ }
+ 
+ export const updateDeal: MutationResolvers['updateDeal'] = ({ id, input }) => {
+@@ -16,3 +47,21 @@ export const deleteDeal: MutationResolvers['deleteDeal'] = ({ id }) => {
+   return db.deal.delete({ where: { id } })
+ }
++
++export const addContactToDeal: MutationResolvers['addContactToDeal'] = async ({ dealId, contactId }) => {
++  await db.dealContact.create({ data: { dealId, contactId } })
++  const deal = await db.deal.findUnique({
++    where: { id: dealId },
++    include: { contacts: { include: { contact: true } } },
++  })
++  if (!deal) throw new Error('Deal not found')
++  return { ...deal, contacts: deal.contacts.map((dc) => dc.contact) }
++}
++
++export const removeContactFromDeal: MutationResolvers['removeContactFromDeal'] = async ({ dealId, contactId }) => {
++  await db.dealContact.delete({ where: { dealId_contactId: { dealId, contactId } } })
++  const deal = await db.deal.findUnique({
++    where: { id: dealId },
++    include: { contacts: { include: { contact: true } } },
++  })
++  if (!deal) throw new Error('Deal not found')
++  return { ...deal, contacts: deal.contacts.map((dc) => dc.contact) }
++}
+diff --git a/packages/redwoodjs/web/src/Routes.tsx b/packages/redwoodjs/web/src/Routes.tsx
+--- a/packages/redwoodjs/web/src/Routes.tsx
++++ b/packages/redwoodjs/web/src/Routes.tsx
+@@ -1,10 +1,9 @@
+-import { Set, Router, Route } from '@redwoodjs/router'
+-
+-import ScaffoldLayout from 'src/layouts/ScaffoldLayout'
++import { Router, Route } from '@redwoodjs/router'
+ 
+ const Routes = () => {
+   return (
+     <Router>
+-      <Set wrap={ScaffoldLayout} title="Contacts" titleTo="contacts" buttonLabel="New Contact" buttonTo="newContact">
+-        <Route path="/contacts/new" page={ContactNewContactPage} name="newContact" />
+-        <Route path="/contacts/{id}/edit" page={ContactEditContactPage} name="editContact" />
+-        <Route path="/contacts/{id}" page={ContactContactPage} name="contact" />
+-        <Route path="/contacts" page={ContactContactsPage} name="contacts" />
+-      </Set>
++      <Route path="/admin/contacts" page={AdminContactsPage} name="adminContacts" />
+       <Route path="/" page={HomePage} name="home" />
+       <Route path="/deals/new" page={NewDealPage} name="newDeal" />
+       <Route path="/thank-you" page={ThankYouPage} name="thankYou" />
+       <Route path="/admin" page={AdminPage} name="admin" />
+       <Route path="/admin/deals" page={AdminDealsPage} name="adminDeals" />
+       <Route path="/admin/deals/{id:String}" page={AdminEditDealPage} name="adminEditDeal" />
+       <Route notfound page={NotFoundPage} />
+diff --git a/packages/redwoodjs/web/src/graphql/mutations.ts b/packages/redwoodjs/web/src/graphql/mutations.ts
+--- a/packages/redwoodjs/web/src/graphql/mutations.ts
++++ b/packages/redwoodjs/web/src/graphql/mutations.ts
+@@ -11,6 +11,24 @@ export const CREATE_DEAL_MUTATION = gql`
+   }
+ `
+ 
++export const CREATE_CONTACT_MUTATION = gql`
++  mutation CreateContact($input: CreateContactInput!) {
++    createContact(input: $input) { id name email phone }
++  }
++`
++
++export const ADD_CONTACT_TO_DEAL_MUTATION = gql`
++  mutation AddContactToDeal($dealId: String!, $contactId: String!) {
++    addContactToDeal(dealId: $dealId, contactId: $contactId) { id }
++  }
++`
++
++export const REMOVE_CONTACT_FROM_DEAL_MUTATION = gql`
++  mutation RemoveContactFromDeal($dealId: String!, $contactId: String!) {
++    removeContactFromDeal(dealId: $dealId, contactId: $contactId) { id }
++  }
++`
++
++ export const UPDATE_DEAL_MUTATION = gql`
+diff --git a/packages/redwoodjs/web/src/graphql/queries.ts b/packages/redwoodjs/web/src/graphql/queries.ts
+--- a/packages/redwoodjs/web/src/graphql/queries.ts
++++ b/packages/redwoodjs/web/src/graphql/queries.ts
+@@ -5,6 +5,15 @@ export const DEALS_QUERY = gql`
+     deals {
+       id
+       name
+       description
+       address
+       status
++      contacts { id name email phone }
+     }
+   }
+ `
++
++export const CONTACTS_QUERY = gql`
++  query Contacts { contacts { id name email phone } }
++`
+diff --git a/packages/redwoodjs/web/src/pages/AdminContactsPage/AdminContactsPage.tsx b/packages/redwoodjs/web/src/pages/AdminContactsPage/AdminContactsPage.tsx
+new file mode 100644
+--- /dev/null
++++ b/packages/redwoodjs/web/src/pages/AdminContactsPage/AdminContactsPage.tsx
+@@ -0,0 +1,58 @@
++import { useEffect, useState } from 'react'
++import { Link, navigate } from '@redwoodjs/router'
++import { useQuery, useMutation } from '@redwoodjs/web'
++import { CONTACTS_QUERY } from 'src/graphql/queries'
++import { CREATE_CONTACT_MUTATION } from 'src/graphql/mutations'
++
++const AdminContactsPage = () => {
++  const [name, setName] = useState('')
++  const [email, setEmail] = useState('')
++  const [phone, setPhone] = useState('')
++  useEffect(() => {
++    if (typeof window !== 'undefined' && sessionStorage.getItem('admin') !== '1') navigate('/admin')
++  }, [])
++  const { data, loading, refetch } = useQuery(CONTACTS_QUERY)
++  const [createContact] = useMutation(CREATE_CONTACT_MUTATION, {
++    onCompleted: () => { setName(''); setEmail(''); setPhone(''); refetch() },
++  })
++  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
++    e.preventDefault()
++    createContact({ variables: { input: { name, email, phone } } })
++  }
++  if (loading) return <p>Loading...</p>
++  return (
++    <main>
++      <h1>Admin — Contacts</h1>
++      <p><Link to="/admin">← Back to admin</Link> | <Link to="/admin/deals">Deals</Link> | <Link to="/">Home</Link></p>
++      <h2>Create contact</h2>
++      <form onSubmit={onSubmit}>
++        <div><label>Name</label><input value={name} onChange={(e) => setName(e.target.value)} required /></div>
++        <div><label>Email</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
++        <div><label>Phone</label><input value={phone} onChange={(e) => setPhone(e.target.value)} required /></div>
++        <button type="submit">Create</button>
++      </form>
++      <h2>All contacts</h2>
++      <ul style={{ listStyle: 'none', padding: 0 }}>
++        {data?.contacts?.map((c: { id: string; name: string; email: string; phone: string }) => (
++          <li key={c.id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '0.5rem', borderRadius: 4 }}>
++            <strong>{c.name}</strong>
++            <p><small>{c.email} · {c.phone}</small></p>
++          </li>
++        ))}
++      </ul>
++    </main>
++  )
++}
++export default AdminContactsPage
+diff --git a/packages/redwoodjs/web/src/pages/AdminDealsPage/AdminDealsPage.tsx b/packages/redwoodjs/web/src/pages/AdminDealsPage/AdminDealsPage.tsx
+--- a/packages/redwoodjs/web/src/pages/AdminDealsPage/AdminDealsPage.tsx
++++ b/packages/redwoodjs/web/src/pages/AdminDealsPage/AdminDealsPage.tsx
+@@ -18,10 +18,10 @@ const AdminDealsPage = () => (
+     <main>
+       <h1>Admin — Deals</h1>
+       <p>
+-        <Link to="/admin">← Back to admin</Link> | <Link to="/">Home</Link>
++        <Link to="/admin">← Back to admin</Link> | <Link to="/admin/contacts">Contacts</Link> | <Link to="/">Home</Link>
+       </p>
+       <ul style={{ listStyle: 'none', padding: 0 }}>
+-        {data?.deals?.map((d: { id: string; name: string; description: string; address: string; status: string }) => (
++        {data?.deals?.map((d: { id: string; name: string; description: string; address: string; status: string; contacts?: { name: string }[] }) => (
+           <li key={d.id} style={{ border: '1px solid #ccc', padding: '1rem', marginBottom: '0.5rem', borderRadius: 4 }}>
+             <strong>{d.name}</strong>
+             <p>{d.description}</p>
+             <p><small>{d.address} · Status: {d.status}</small></p>
++            {d.contacts?.length > 0 && (
++              <p><small>Contacts: {d.contacts.map((c: { name: string }) => c.name).join(', ')}</small></p>
++            )}
+             <p>
+diff --git a/packages/redwoodjs/web/src/pages/AdminEditDealPage/AdminEditDealPage.tsx b/packages/redwoodjs/web/src/pages/AdminEditDealPage/AdminEditDealPage.tsx
+--- a/packages/redwoodjs/web/src/pages/AdminEditDealPage/AdminEditDealPage.tsx
++++ b/packages/redwoodjs/web/src/pages/AdminEditDealPage/AdminEditDealPage.tsx
+@@ -1,8 +1,10 @@
+ import { useEffect, useState } from 'react'
+ import { Link, navigate, useParams } from '@redwoodjs/router'
+ import { useQuery, useMutation } from '@redwoodjs/web'
+-import { DEALS_QUERY } from 'src/graphql/queries'
+-import { UPDATE_DEAL_MUTATION } from 'src/graphql/mutations'
++import { DEALS_QUERY, CONTACTS_QUERY } from 'src/graphql/queries'
++import { UPDATE_DEAL_MUTATION, ADD_CONTACT_TO_DEAL_MUTATION, REMOVE_CONTACT_FROM_DEAL_MUTATION } from 'src/graphql/mutations'
++
++type Contact = { id: string; name: string; email: string; phone: string }
+ 
+ const AdminEditDealPage = () => {
+   const { id } = useParams()
+@@ -16,12 +18,22 @@ const AdminEditDealPage = () => {
+   }, [])
+ 
+-  const { data: dealsData } = useQuery(DEALS_QUERY)
++  const { data: dealsData, refetch: refetchDeals } = useQuery(DEALS_QUERY)
++  const { data: contactsData } = useQuery(CONTACTS_QUERY)
+   const deal = dealsData?.deals?.find((d: { id: string }) => d.id === id)
++  const contacts = (deal?.contacts ?? []) as Contact[]
++  const allContacts = (contactsData?.contacts ?? []) as Contact[]
++  const availableToAdd = allContacts.filter((c) => !contacts.some((x) => x.id === c.id))
+ 
+   const [updateDeal] = useMutation(UPDATE_DEAL_MUTATION, {
+     onCompleted: () => navigate('/admin/deals'),
+   })
++  const [addContact] = useMutation(ADD_CONTACT_TO_DEAL_MUTATION, { onCompleted: () => refetchDeals() })
++  const [removeContact] = useMutation(REMOVE_CONTACT_FROM_DEAL_MUTATION, { onCompleted: () => refetchDeals() })
+ 
+   useEffect(() => {
+     if (deal) {
+@@ -70,6 +82,34 @@ const AdminEditDealPage = () => (
+         </div>
+         <button type="submit">Save</button>
+       </form>
++      <h2>Contacts on this deal</h2>
++      <ul style={{ listStyle: 'none', padding: 0 }}>
++        {contacts.map((c) => (
++          <li key={c.id} style={{ marginBottom: '0.5rem' }}>
++            {c.name} ({c.email}) —{' '}
++            <button type="button" onClick={() => removeContact({ variables: { dealId: id, contactId: c.id } })}>Remove</button>
++          </li>
++        ))}
++      </ul>
++      {availableToAdd.length > 0 && (
++        <>
++          <h3>Add existing contact</h3>
++          <select onChange={(e) => { const v = e.target.value; if (v) addContact({ variables: { dealId: id, contactId: v } }); e.target.value = '' }}>
++            <option value="">— Select contact —</option>
++            {availableToAdd.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.email})</option>)}
++          </select>
++        </>
++      )}
+     </main>
+diff --git a/packages/redwoodjs/web/src/pages/NewDealPage/NewDealPage.tsx b/packages/redwoodjs/web/src/pages/NewDealPage/NewDealPage.tsx
+--- a/packages/redwoodjs/web/src/pages/NewDealPage/NewDealPage.tsx
++++ b/packages/redwoodjs/web/src/pages/NewDealPage/NewDealPage.tsx
+@@ -2,13 +2,20 @@ import { Link, navigate } from '@redwoodjs/router'
+ import { useMutation } from '@redwoodjs/web'
+ import { CREATE_DEAL_MUTATION } from 'src/graphql/mutations'
+ 
+ const NewDealPage = () => {
+   const [createDeal, { loading }] = useMutation(CREATE_DEAL_MUTATION, {
+     onCompleted: () => navigate('/thank-you'),
+   })
+ 
+   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+     e.preventDefault()
+     const form = e.target as HTMLFormElement
+-    const input = {
++    const input: { name: string; description: string; address: string; contact?: { name: string; email: string; phone: string } } = {
+       name: (form.name as HTMLInputElement).value,
+       description: (form.description as HTMLTextAreaElement).value,
+       address: (form.address as HTMLInputElement).value,
+     }
++    const cName = (form.contactName as HTMLInputElement).value
++    const cEmail = (form.contactEmail as HTMLInputElement).value
++    const cPhone = (form.contactPhone as HTMLInputElement).value
++    if (cName && cEmail && cPhone) input.contact = { name: cName, email: cEmail, phone: cPhone }
+     createDeal({ variables: { input } })
+   }
+ 
+@@ -33,6 +40,19 @@ const NewDealPage = () => (
+           <label>Address</label>
+           <input name="address" required />
+         </div>
++        <h2>Primary Contact (optional)</h2>
++        <div><label>Contact name</label><input name="contactName" /></div>
++        <div><label>Contact email</label><input type="email" name="contactEmail" /></div>
++        <div><label>Contact phone</label><input type="tel" name="contactPhone" /></div>
+         <button type="submit" disabled={loading}>

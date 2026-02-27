@@ -1,0 +1,20 @@
+diff --git a/packages/redwoodjs/api/db/schema.prisma b/packages/redwoodjs/api/db/schema.prisma
+index 0000000..0000000 100644
+--- a/packages/redwoodjs/api/db/schema.prisma
++++ b/packages/redwoodjs/api/db/schema.prisma
+@@ -15,6 +15,15 @@ model AdminUser {
+   updatedAt DateTime @updatedAt
+ }
+ 
++model Contact {
++  id        String   @id @default(cuid())
++  name      String
++  email     String
++  phone     String
++  createdAt DateTime @default(now())
++  updatedAt DateTime @updatedAt
++}
++
+ model Deal {
+   id          String   @id @default(cuid())
+   name        String

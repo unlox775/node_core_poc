@@ -1,0 +1,12 @@
+import { Link } from "react-router-dom";
+
+export default function Home() {
+  return (
+    <main>
+      <h1>Ben's Cranes</h1>
+      <p>Professional crane services when you need them. Moving pianos, roof trusses, heavy equipment — we've got you covered.</p>
+      <p>Ready to get a quote? <Link to="/deals/new">Submit a new deal</Link> and we'll get back to you.</p>
+      <p><small><a href="/admin">Admin</a> (AdminJS — login: ethan / 123qwe)</small></p>
+    </main>
+  );
+}

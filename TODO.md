@@ -19,7 +19,7 @@ Single source for what's done and what **you** need to do. Each stack has a `dem
 | **1** | Startup: start PostgreSQL, create DB, `cp .env.example .env`, `db:push`, `db:seed`, `dev`. Open homepage. |
 | **2** | Public deal flow: Click submit → fill form → submit → thank-you page. |
 | **3** | Admin: `/admin` → login ethan/123qwe → list deals → edit one (change status) → delete one → confirm gone. |
-| **4** | Add Contact model: **Apply patch** from `phase4/`. Or follow `phase4/phase4-manual-patch.md` for manual edits. Regenerate manual docs: `./bin/generate-phase4-manual-patches.sh`. |
+| **4** | Add Contact model: **Redwood** — run `./packages/redwoodjs/phase4/apply.sh` (scaffolding + patch). **Other stacks** — apply patch from `phase4/`. Manual: `phase4/phase4-manual-patch.md`. |
 | **5** | Verify E2E: Submit deal (with contact) → confirm in admin. |
 
 ---
@@ -103,7 +103,7 @@ yarn rw dev
 ```
 Open http://localhost:8910. Admin: ethan / 123qwe. Node 20.x.
 
-**Phase 4**: Apply patch. From repo root: `git apply packages/redwoodjs/phase4/phase4.patch`. Then reseed and dev. See `phase4/README.md`. Requires Yarn.
+**Phase 4**: Scaffolding + patch. Run `./packages/redwoodjs/phase4/apply.sh` from repo root (runs `yarn rw generate scaffold Contact` + integration patch). See `phase4/README.md`.
 
 ---
 

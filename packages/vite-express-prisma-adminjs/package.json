@@ -1,0 +1,51 @@
+{
+  "name": "bens-cranes-vite-express-adminjs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "tsx watch api/index.ts",
+    "dev:web": "vite",
+    "build": "npm run build:api && npm run build:web",
+    "build:api": "tsc -p api/tsconfig.json",
+    "build:web": "vite build",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reseed": "prisma generate && prisma db push --force-reset && npm run db:seed",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@adminjs/express": "^6.1.0",
+    "@adminjs/prisma": "^5.0.0",
+    "@prisma/client": "^5.22.0",
+    "adminjs": "^7.6.0",
+    "bcryptjs": "^2.4.3",
+    "express-formidable": "^1.2.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-session": "^1.19.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/express-session": "^1.18.2",
+    "@types/node": "^20.17.6",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "concurrently": "^9.1.0",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}

@@ -1,24 +1,27 @@
-# Phase 4: Add Contact Model
+# Phase 4: Add Contact Model (Scaffolding)
 
-This folder contains patch files to apply and unapply the Phase 4 (Contact model) changes. The base codebase is Phase 3 only — no Contact, DealContact, or contacts UI.
-
-**Manual edits**: If you prefer to apply changes by hand instead of `git apply`, see [phase4-manual-patch.md](./phase4-manual-patch.md) for file-by-file, line-by-line instructions with copy-paste code blocks.
+Phase 4 uses **Redwood scaffolding** to add the Contact model, then an integration patch for Deal-Contact relations and admin pages.
 
 ## Apply Phase 4
 
 From the **repo root**:
 
 ```bash
-git apply packages/redwoodjs/phase4/phase4.patch
+./packages/redwoodjs/phase4/apply.sh
 ```
 
-Then:
+Or run the steps manually:
+
+1. **Schema**: `git apply packages/redwoodjs/phase4/phase4-schema-initial.patch`
+2. **DB push**: `cd packages/redwoodjs && yarn rw prisma db push --force-reset` (or `npx rw`)
+3. **Scaffold Contact**: `yarn rw generate scaffold Contact` (or `npx rw generate scaffold Contact`)
+4. **Integration**: `git apply packages/redwoodjs/phase4/phase4-integration.patch`
+5. **DB push + seed**: `yarn rw prisma db push --force-reset && yarn rw prisma db seed`
+
+If the scaffold step fails (e.g. yarn/network), run it manually from `packages/redwoodjs`, then:
 
 ```bash
-cd packages/redwoodjs
-yarn rw prisma db push --force-reset
-yarn rw prisma db seed
-yarn rw dev
+./packages/redwoodjs/phase4/apply.sh --skip-scaffold
 ```
 
 ## Revert (back to Phase 3)
@@ -26,20 +29,16 @@ yarn rw dev
 From the **repo root**:
 
 ```bash
-git apply -R packages/redwoodjs/phase4/phase4.patch
+./packages/redwoodjs/phase4/revert.sh
 ```
 
-Then reseed and run again (schema back to Phase 3):
-
-```bash
-cd packages/redwoodjs
-yarn rw prisma db push --force-reset
-yarn rw prisma db seed
-yarn rw dev
-```
+This reverts the integration patch, removes scaffold-generated files, reverts the schema, and reseeds.
 
 ## What Phase 4 Adds
 
-- **Schema**: Contact model, DealContact join table, Deal.contacts relation
-- **API**: Contact GraphQL types, contacts service, add/remove mutations
-- **UI**: Primary contact on public deal form, AdminContactsPage, contact management on deal edit
+- **Scaffolding**: Contact model + `yarn rw generate scaffold Contact` → SDL, service, components, pages
+- **Integration patch**: DealContact join table, Deal.contacts relation, admin/contacts route, deal form contact fields, add/remove contacts on deal edit
+
+## Manual edits
+
+If you prefer to apply changes by hand, see [phase4-manual-patch.md](./phase4-manual-patch.md) for step-by-step instructions (needs update for scaffolding flow).

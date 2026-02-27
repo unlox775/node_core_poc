@@ -64,8 +64,10 @@ Stacks fall into roughly three buckets:
 | **T3 Stack** | Full-stack | Rapid dev, type-safe, opinionated | [t3-stack.md](./t3-stack.md) |
 | **Remix** | Full-stack | Web standards, progressive enhancement | [remix.md](./remix.md) |
 | **Vite + Express + Prisma** | Split-stack | Minimal magic, full control | [vite-express-prisma.md](./vite-express-prisma.md) |
+| **Vite + Express + Prisma + AdminJS** | Split-stack | Same + AdminJS (ActiveAdmin-style admin) | [vite-express-prisma-adminjs.md](./vite-express-prisma-adminjs.md) |
 | **RedwoodJS** | Full-stack | Convention over config, batteries included | [redwoodjs.md](./redwoodjs.md) |
 | **NestJS + Vite React** | Backend-heavy | Scalable teams, clear separation | [nestjs-vite-react.md](./nestjs-vite-react.md) |
+| **NestJS + Vite React + AdminJS** | Backend-heavy | Same + AdminJS (ActiveAdmin-style admin) | [nestjs-vite-react-adminjs.md](./nestjs-vite-react-adminjs.md) |
 
 ## Next Steps
 

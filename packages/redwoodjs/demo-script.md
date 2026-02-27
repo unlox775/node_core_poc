@@ -50,34 +50,99 @@ Complete step-by-step demo. Everything you need is here.
 
 ---
 
-## Phase 4: Add Contact Model
+## Phase 4: Add Contact Model (Scaffolding)
 
-Phase 4 is delivered as a **patch** you apply and revert. The base code is Phase 3 only. See `phase4/README.md` for details.
+Phase 4 shows how Redwood's scaffolding works. You add a model to Prisma first, then run `yarn rw generate scaffold Contact` to generate SDL, services, and pages. An integration patch then wires Contact into the Deal flow.
 
-To apply manually instead of `git apply`, see [phase4/phase4-manual-patch.md](phase4/phase4-manual-patch.md) for step-by-step edit instructions with copy-paste code blocks.
+### Why add the model to Prisma first?
 
-**To apply Phase 4** (from repo root):
+Redwood does **not** have a "generate model" command. The Prisma schema (`api/db/schema.prisma`) is the source of truth. You define models there; Prisma generates the client and migrations. Redwood's `generate scaffold` reads from the schema — it assumes the model already exists. So the flow is: define model → push schema → scaffold.
+
+### Step 1: Add the Contact model to the schema
+
+The **schema-initial patch** adds the Contact model to `api/db/schema.prisma`:
+
+```prisma
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+We add only Contact (no DealContact yet). If we added the Deal–Contact relation here, the scaffold would try to expose `Contact.deals` in GraphQL, which references DealContact — but DealContact would have no SDL, causing an "Unknown type DealContact" error. So we add Contact first, scaffold it, then add the join table in the integration step.
+
+Apply the patch and push the schema:
 
 ```bash
-git apply packages/redwoodjs/phase4/phase4.patch
+git apply packages/redwoodjs/phase4/phase4-schema-initial.patch
+cd packages/redwoodjs
+yarn rw prisma db push --force-reset   # or: npx rw prisma db push --force-reset
+```
+
+### Step 2: Run the scaffold
+
+`yarn rw generate scaffold Contact` reads the Contact model from the schema and generates:
+
+| What | Where |
+|------|-------|
+| GraphQL SDL | `api/src/graphql/contacts.sdl.ts` — types, queries, mutations |
+| Service | `api/src/services/contacts/contacts.ts` — CRUD resolvers |
+| Cells & components | `web/src/components/Contact/*` — list, form, show |
+| Pages | `web/src/pages/Contact/*` — list, new, edit, show |
+| Layout | `web/src/layouts/ScaffoldLayout/` |
+| Routes | Adds `/contacts`, `/contacts/new`, `/contacts/{id}`, `/contacts/{id}/edit` |
+
+Run it:
+
+```bash
+yarn rw generate scaffold Contact   # or: npx rw generate scaffold Contact
+```
+
+If this fails (yarn/network), run it manually from `packages/redwoodjs`, then continue with `./packages/redwoodjs/phase4/apply.sh --skip-scaffold`.
+
+### Step 3: Apply the integration patch
+
+The integration patch adds:
+
+- DealContact join table and Deal.contacts relation in the schema
+- Contact on Deal in the GraphQL API
+- Mutations: `addContactToDeal`, `removeContactFromDeal`
+- Admin Contacts page at `/admin/contacts`
+- Primary contact fields on the public deal form
+- Add/remove contacts on the deal edit page
+
+From repo root:
+
+```bash
+cd ../..
+git apply packages/redwoodjs/phase4/phase4-integration.patch
 cd packages/redwoodjs
 yarn rw prisma db push --force-reset
 yarn rw prisma db seed
-yarn rw dev
+yarn rw dev   # or: npx rw dev
 ```
 
-Or run `./packages/redwoodjs/phase4/apply.sh` from repo root.
+### One-line apply
 
-**To revert** (back to Phase 3):
+Or run everything at once (from repo root):
 
 ```bash
-git apply -R packages/redwoodjs/phase4/phase4.patch
-cd packages/redwoodjs
-yarn rw prisma db push --force-reset
-yarn rw prisma db seed
+./packages/redwoodjs/phase4/apply.sh
 ```
 
-**With Phase 4 applied:**
+### Revert (back to Phase 3)
+
+```bash
+./packages/redwoodjs/phase4/revert.sh
+```
+
+(Run as a script, not with `source`.)
+
+### With Phase 4 applied
 
 1. Go to http://localhost:8910/deals/new. Submit a deal **with** a primary contact (name, email, phone).
 
