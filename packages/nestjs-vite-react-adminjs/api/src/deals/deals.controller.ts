@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import { DealStatus } from '@prisma/client';
 import { DealsService } from './deals.service';
 
 @Controller('api/deals')
@@ -17,7 +18,7 @@ export class DealsController {
 
   @Put(':id')
   update(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.deals.update(id, body as { name?: string; description?: string; address?: string; status?: string });
+    return this.deals.update(id, body as { name?: string; description?: string; address?: string; status?: DealStatus });
   }
 
   @Delete(':id')

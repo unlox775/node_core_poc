@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum DealStatus {
+  pending
+  accepted
+  completed
+}
+
 model AdminUser {
   id        String   @id @default(cuid())
   username  String   @unique
@@ -20,7 +26,7 @@ model Deal {
   name        String
   description String
   address     String
-  status      String   @default("pending")
+  status      DealStatus @default(pending)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
