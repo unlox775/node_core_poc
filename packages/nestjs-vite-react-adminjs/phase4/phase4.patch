@@ -83,61 +83,16 @@ diff --git a/packages/nestjs-vite-react-adminjs/api/src/main.ts b/packages/nestj
 index a38eee4..242b122 100644
 --- a/packages/nestjs-vite-react-adminjs/api/src/main.ts
 +++ b/packages/nestjs-vite-react-adminjs/api/src/main.ts
-@@ -1,10 +1,52 @@
- import 'dotenv/config';
- import { NestFactory } from '@nestjs/core';
- import { AppModule } from './app.module';
-+import { PrismaService } from './prisma/prisma.service';
- 
- async function bootstrap() {
-   const app = await NestFactory.create(AppModule);
--  app.enableCors({ origin: 'http://localhost:5173' });
-+  app.enableCors({ origin: 'http://localhost:5173', credentials: true });
-+
-+  // AdminJS v7 is ESM-only; mount via Express in main.ts using dynamic imports (avoids @adminjs/nestjs)
-+  const prisma = app.get(PrismaService);
-+  const AdminJS = (await import('adminjs')).default;
-+  // @ts-expect-error - ESM-only packages; dynamic import works at runtime
-+  const { Database, Resource, getModelByName } = await import('@adminjs/prisma');
-+  const AdminJSExpress = (await import('@adminjs/express')).default;
-+  const { compare: bcryptCompare } = await import('bcryptjs');
-+
-+  AdminJS.registerAdapter({ Database, Resource });
-+  const admin = new AdminJS({
-+    resources: [
-+      { resource: { model: getModelByName('Deal'), client: prisma }, options: {} },
-+      { resource: { model: getModelByName('AdminUser'), client: prisma }, options: {} },
+@@ -17,6 +17,8 @@ async function bootstrap() {
+   const admin = new AdminJS({
+     resources: [
+       { resource: { model: getModelByName('Deal'), client: prisma }, options: {} },
+       { resource: { model: getModelByName('AdminUser'), client: prisma }, options: {} },
 +      { resource: { model: getModelByName('Contact'), client: prisma }, options: {} },
 +      { resource: { model: getModelByName('DealContact'), client: prisma }, options: {} },
-+    ],
-+  });
-+  const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
-+    admin,
-+    {
-+      authenticate: async (email: string, password: string) => {
-+        const adminUser = await prisma.adminUser.findUnique({ where: { username: email } });
-+        if (!adminUser || !(await bcryptCompare(password, adminUser.password))) return null;
-+        return { ...adminUser, email: adminUser.username };
-+      },
-+      cookieName: 'adminjs',
-+      cookiePassword: process.env.SESSION_SECRET || 'demo-secret-change-in-production',
-+    },
-+    null,
-+    {
-+      resave: true,
-+      saveUninitialized: true,
-+      secret: process.env.SESSION_SECRET || 'demo-secret-change-in-production',
-+      cookie: { httpOnly: true, secure: false, maxAge: 24 * 60 * 60 * 1000 },
-+      name: 'adminjs',
-+    },
-+  );
-+  const expressApp = app.getHttpAdapter().getInstance();
-+  expressApp.use(admin.options.rootPath, adminRouter);
-+
-   await app.listen(process.env.PORT || 3000);
- }
- bootstrap();
-diff --git a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
+     ],
+   });
+ diff --git a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
 index 6bc7cf8..8d79689 100644
 --- a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
 +++ b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
