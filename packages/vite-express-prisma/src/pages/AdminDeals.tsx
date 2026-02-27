@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-type Contact = { id: string; name: string; email: string; phone: string };
-type Deal = { id: string; name: string; description: string; address: string; status: string; contacts?: Contact[] };
+type Deal = { id: string; name: string; description: string; address: string; status: string };
 
 export default function AdminDeals() {
   const navigate = useNavigate();
@@ -35,7 +34,7 @@ export default function AdminDeals() {
     <main>
       <h1>Admin — Deals</h1>
       <p>
-        <Link to="/admin">← Back to admin</Link> | <Link to="/admin/contacts">Contacts</Link> | <Link to="/">Home</Link>
+        <Link to="/admin">← Back to admin</Link> | <Link to="/">Home</Link>
         {" · "}
         <button type="button" onClick={() => { fetch("/api/admin/logout", { method: "POST", credentials: "include" }); sessionStorage.removeItem("admin"); navigate("/"); }} style={{ background: "none", border: "none", color: "inherit", textDecoration: "underline", cursor: "pointer", font: "inherit" }}>Log out</button>
       </p>
@@ -46,9 +45,6 @@ export default function AdminDeals() {
               <strong>{d.name}</strong>
               <p>{d.description}</p>
               <p><small>{d.address} · Status: {d.status}</small></p>
-              {d.contacts && d.contacts.length > 0 && (
-                <p><small>Contacts: {d.contacts.map((c) => c.name).join(", ")}</small></p>
-              )}
               <p>
                 <Link to={`/admin/deals/${d.id}`}>Edit</Link>
                 {" · "}

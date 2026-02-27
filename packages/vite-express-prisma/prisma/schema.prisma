@@ -15,16 +15,6 @@ model AdminUser {
   updatedAt DateTime @updatedAt
 }
 
-model Contact {
-  id        String   @id @default(cuid())
-  name      String
-  email     String
-  phone     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deals     DealContact[]
-}
-
 model Deal {
   id          String   @id @default(cuid())
   name        String
@@ -33,13 +23,4 @@ model Deal {
   status      String   @default("pending")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  contacts    DealContact[]
-}
-
-model DealContact {
-  dealId    String
-  contactId String
-  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  @@id([dealId, contactId])
 }

@@ -52,39 +52,15 @@ app.post("/api/admin/logout", (req, res) => {
 
 // PUBLIC: Submit new deal (contact form — anyone can submit)
 app.post("/api/deals", async (req, res) => {
-  const { name, description, address, contact } = req.body;
-  const data: {
-    name: string;
-    description: string;
-    address: string;
-    status: string;
-    contacts?: { create: { contact: { create: { name: string; email: string; phone: string } } }[] };
-  } = {
-    name,
-    description,
-    address,
-    status: "pending",
-  };
-  if (contact?.name && contact?.email && contact?.phone) {
-    data.contacts = {
-      create: [{ contact: { create: { name: contact.name, email: contact.email, phone: contact.phone } } }],
-    };
-  }
-  const deal = await prisma.deal.create({ data, include: { contacts: { include: { contact: true } } } });
-  res.json({ ...deal, contacts: deal.contacts.map((dc) => dc.contact) });
+  const { name, description, address } = req.body;
+  const deal = await prisma.deal.create({ data: { name, description, address, status: "pending" } });
+  res.json(deal);
 });
 
 // ADMIN: List deals (protected)
 app.get("/api/deals", requireAdmin, async (_req, res) => {
-  const deals = await prisma.deal.findMany({
-    orderBy: { createdAt: "desc" },
-    include: { contacts: { include: { contact: true } } },
-  });
-  const mapped = deals.map((d) => ({
-    ...d,
-    contacts: d.contacts.map((dc) => dc.contact),
-  }));
-  res.json(mapped);
+  const deals = await prisma.deal.findMany({ orderBy: { createdAt: "desc" } });
+  res.json(deals);
 });
 
 app.put("/api/deals/:id", requireAdmin, async (req, res) => {
@@ -97,30 +73,6 @@ app.put("/api/deals/:id", requireAdmin, async (req, res) => {
 app.delete("/api/deals/:id", requireAdmin, async (req, res) => {
   await prisma.deal.delete({ where: { id: req.params.id } });
   res.json({ ok: true });
-});
-
-app.post("/api/deals/:id/contacts", requireAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { contactId } = req.body;
-  await prisma.dealContact.create({ data: { dealId: id, contactId } });
-  res.json({ ok: true });
-});
-
-app.delete("/api/deals/:dealId/contacts/:contactId", requireAdmin, async (req, res) => {
-  const { dealId, contactId } = req.params;
-  await prisma.dealContact.delete({ where: { dealId_contactId: { dealId, contactId } } });
-  res.json({ ok: true });
-});
-
-app.get("/api/contacts", requireAdmin, async (_req, res) => {
-  const contacts = await prisma.contact.findMany({ orderBy: { name: "asc" } });
-  res.json(contacts);
-});
-
-app.post("/api/contacts", requireAdmin, async (req, res) => {
-  const { name, email, phone } = req.body;
-  const contact = await prisma.contact.create({ data: { name, email, phone } });
-  res.json(contact);
 });
 
 const PORT = process.env.PORT || 3001;
