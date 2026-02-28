@@ -9,6 +9,7 @@ node_modules/
 # Build
 dist/
 api/dist/
+api/.adminjs/
 
 # Misc
 .DS_Store
