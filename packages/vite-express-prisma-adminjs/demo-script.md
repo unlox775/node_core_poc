@@ -62,9 +62,9 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 **What the patch adds** (CliffsNotes):
 
-1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
-2. **AdminJS** — Add Contact and DealContact to `resources` in `api/index.ts`.
-3. **POST /api/deals** — Accept optional `contact`; create deal with nested contact when provided.
+1. **Schema** — Contact model, DealContact join table, Deal.contacts relation (in `prisma/schema.prisma`).
+2. **AdminJS** — Add Contact resource; custom **Manage contacts** (on Deal) and **Manage deals** (on Contact) record actions. DealContact (join table) not exposed.
+3. **API** — GET /api/deals, /api/deals/:id, /api/contacts, /api/contacts/:id, POST/DELETE for deal–contact links; POST /api/deals accepts optional `contact`.
 4. **NewDeal form** — Optional primary contact fields (name, email, phone).
 
 Seed is unchanged. Run `db:push` to apply the schema.
