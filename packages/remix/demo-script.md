@@ -4,6 +4,23 @@ Complete step-by-step demo. Everything you need is here.
 
 ---
 
+## Phase 0: Framework Tour
+
+**One server.** Remix runs a single Node process (port 5173 in dev). No separate API; routes are the data layer.
+
+**Where logic lives:**
+- **Routes** — `app/routes/`. File-based: `deals.new.tsx` = `/deals/new`, `admin.deals.$id.tsx` = `/admin/deals/:id`. Each route exports `loader` (fetch data) and `action` (mutations). Loaders/actions run on the server; they call Prisma directly.
+- **Entry** — `app/root.tsx` (layout); `app/entry.server.tsx` / `app/entry.client.tsx` (hydration).
+- **No REST API** — The frontend doesn't call `/api/*`. It uses Remix loaders/actions; forms submit to the current route's action.
+
+**Admin area** — Routes under `app/routes/admin.*`. Same pattern: loaders fetch, actions mutate. Session auth in `admin.tsx` layout.
+
+**Production build** — `remix vite:build` → `build/`. Run with `remix-serve`. One process, one port.
+
+**AWS (typical)** — Load balancer; single EC2/ECS or Lambda (adapter-dependent). RDS for Postgres. Lighter than two-server setups.
+
+---
+
 ## Phase 1: Startup & Homepage
 
 1. **Start PostgreSQL** (if not running): `./bin/start_postgresql.sh` (from repo root).

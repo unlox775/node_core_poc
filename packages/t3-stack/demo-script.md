@@ -4,6 +4,24 @@ Complete step-by-step demo. Everything you need is here.
 
 ---
 
+## Phase 0: Framework Tour
+
+**One server.** Next.js (App Router) on port 3000. tRPC runs inside Next; no separate API server.
+
+**Where logic lives:**
+- **Data layer** — `src/server/api/routers/`. tRPC routers: `deal.ts`, `admin.ts`. Each router defines procedures (queries, mutations) that use Prisma. Type-safe end-to-end.
+- **Pages** — `src/app/`. App Router: `page.tsx` per route (`/`, `/deals/new`, `/admin`, `/admin/deals`, etc.). Pages use `api.deal` or `api.admin` via tRPC React hooks.
+- **Entry** — `src/app/layout.tsx`; tRPC provider wraps the app.
+- **No REST** — Frontend calls tRPC procedures, not `/api/...`. One `/api/trpc/[trpc]` route handles all tRPC.
+
+**Admin area** — Pages under `src/app/admin/`. tRPC `admin` router for list/edit/delete. Hand-built UI.
+
+**Production build** — `next build` → `.next/`. `next start` runs one process.
+
+**AWS (typical)** — Load balancer; single EC2/ECS or Vercel. RDS for Postgres. Single deployment unit.
+
+---
+
 ## Phase 1: Startup & Homepage
 
 1. **Start PostgreSQL** (if not running):

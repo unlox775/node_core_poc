@@ -4,6 +4,24 @@ Complete step-by-step demo. Everything you need is here.
 
 ---
 
+## Phase 0: Framework Tour
+
+**One process, two sides.** `yarn rw dev` runs API (GraphQL) and web (React) together. Web on port 8910; API (usually 8911) is internal. User hits 8910; web calls GraphQL on the same origin.
+
+**Where logic lives:**
+- **API** — `api/src/`. GraphQL SDL in `graphql/`; services in `services/` (Prisma calls); `functions/graphql.ts` is the handler. No REST; everything goes through GraphQL.
+- **Web** — `web/src/`. Pages, components, cells (data-fetching components). Routes in `Routes.tsx`.
+- **Entry** — `web/src/App.tsx`; API is a serverless-style function (or Express in some configs).
+- **Data flow** — Cells/Pages use generated GraphQL hooks; services implement the resolvers.
+
+**Admin area** — Hand-built pages under `web/src/pages/`; they query the GraphQL API. Scaffolding can generate full CRUD from a model.
+
+**Production build** — `yarn rw build`. Deploy API + web; often separate (API to Lambda/serverless, web to CDN) or single Node server.
+
+**AWS (typical)** — Redwood has deploy targets (Lambda, EC2, etc.). Often: API on Lambda + API Gateway; web on S3 + CloudFront; RDS for Postgres.
+
+---
+
 ## Phase 1: Startup & Homepage
 
 1. **Start PostgreSQL**: `./bin/start_postgresql.sh` (from repo root).

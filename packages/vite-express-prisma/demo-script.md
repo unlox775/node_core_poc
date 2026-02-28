@@ -4,6 +4,23 @@ Complete step-by-step demo. No external references — everything you need is he
 
 ---
 
+## Phase 0: Framework Tour
+
+**Two web servers.** Vite (frontend) on port 5173; Express (API) on port 3001. Vite proxies `/api` to Express. User hits 5173 only.
+
+**Where logic lives:**
+- **API routes** — All in `api/index.ts`. One file: Express app, every route, session, auth. No controllers; handlers are inline.
+- **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.
+- **Entry** — `index.html` → `src/main.tsx`; API entry is `api/index.ts`.
+
+**Admin area** — Hand-built in `src/pages/Admin*.tsx`. No AdminJS; you write list/edit/delete pages yourself.
+
+**Production build** — API compiles to `api/dist/`; frontend to `dist/`. Run `node api/dist/index.js` and serve `dist/` statically. Two processes, or one serving both.
+
+**AWS (typical)** — Load balancer; EC2/ECS for API; optional S3 + CloudFront for static, or one Node process. RDS for Postgres.
+
+---
+
 ## Phase 1: Startup & Homepage
 
 1. **Start PostgreSQL** (if not running):

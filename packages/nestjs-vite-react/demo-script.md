@@ -4,6 +4,23 @@ Complete step-by-step demo. Everything you need is here.
 
 ---
 
+## Phase 0: Framework Tour
+
+**Two web servers.** Vite (frontend) on port 5173; NestJS (API) on port 3000. Vite proxies `/api` to Nest. User hits 5173 only.
+
+**Where logic lives:**
+- **API** — `api/src/`. Feature modules: `deals/` (controller, service), `admin/` (controller, service), `prisma/`. Controllers define routes; services hit Prisma.
+- **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.
+- **Entry** — `index.html` → `src/main.tsx`; API entry is `api/src/main.ts`.
+
+**Admin area** — Hand-built. `admin.controller` serves admin API; `src/pages/Admin*.tsx` renders the UI. No AdminJS.
+
+**Production build** — Nest to `api/dist/`; Vite to `dist/`. Two processes.
+
+**AWS (typical)** — Load balancer; EC2/ECS for Nest; optional static hosting. RDS for Postgres.
+
+---
+
 ## Phase 1: Startup & Homepage
 
 1. **Start PostgreSQL**: `./bin/start_postgresql.sh` (from repo root).

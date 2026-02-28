@@ -4,6 +4,23 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 ---
 
+## Phase 0: Framework Tour
+
+**Two web servers.** Vite (frontend) on port 5173 serves the React SPA; Express (API) on port 3001 serves REST routes and AdminJS. In dev, Vite proxies `/api` and `/admin` to Express. User hits 5173 only.
+
+**Where logic lives:**
+- **API routes & AdminJS** — All in `api/index.ts`. One file: Express app, CORS, session, every route, AdminJS setup.
+- **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.
+- **Entry** — `index.html` → `src/main.tsx`; API entry is `api/index.ts`.
+
+**Admin area** — AdminJS is mounted on Express at `/admin`. It generates CRUD from Prisma models. Custom actions live in `api/admin/` (Phase 4).
+
+**Production build** — `npm run build` compiles API to `api/dist/`, frontend to `dist/`. You run `node api/dist/index.js` and serve `dist/` statically (or reverse-proxy). Two processes, or one process serving both.
+
+**AWS (typical)** — Load balancer; EC2/ECS for API (Node); optional separate static hosting (S3 + CloudFront) for frontend, or serve both from one Node process. RDS for Postgres.
+
+---
+
 ## Phase 1: Startup & Homepage
 
 1. **Start PostgreSQL** (if not running): `./bin/start_postgresql.sh` (from repo root).

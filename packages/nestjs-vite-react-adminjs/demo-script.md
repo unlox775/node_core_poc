@@ -4,6 +4,23 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 ---
 
+## Phase 0: Framework Tour
+
+**Two web servers.** Vite (frontend) on port 5173; NestJS (API) on port 3000. Vite proxies `/api` and `/admin` to Nest. User hits 5173 only.
+
+**Where logic lives:**
+- **API** — `api/src/`. `main.ts` bootstraps the app; AdminJS wired in there. Feature modules: `deals/` (controller, service, module), `contacts/` (Phase 4), `prisma/`. Controllers define routes; services hit Prisma.
+- **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.
+- **Entry** — `index.html` → `src/main.tsx`; API entry is `api/src/main.ts`.
+
+**Admin area** — AdminJS is configured in `main.ts` and mounted on Nest. Custom action components in `api/src/admin/` (Phase 4).
+
+**Production build** — Nest builds to `api/dist/`; Vite to `dist/`. Run Nest with `node api/dist/main.js`, serve static assets. Two processes in practice.
+
+**AWS (typical)** — Load balancer; EC2/ECS for Nest API; S3 + CloudFront for frontend (optional) or serve both from one Node process. RDS for Postgres.
+
+---
+
 ## Phase 1: Startup & Homepage
 
 1. **Start PostgreSQL** (if not running): `./bin/start_postgresql.sh` (from repo root).
