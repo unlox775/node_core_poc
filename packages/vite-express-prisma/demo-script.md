@@ -8,6 +8,10 @@ Complete step-by-step demo. No external references — everything you need is he
 
 **Two web servers.** Vite (frontend) on port 5173; Express (API) on port 3001. Vite proxies `/api` to Express. User hits 5173 only.
 
+**Frontend:** Classic **SPA**. React + React Router. Client-side routing, no full page reloads.
+
+**Client/server model:** Clear separation. Client code in `src/` runs in the browser; server in `api/index.ts` runs in Node. You write `fetch("/api/...")` — plain HTTP, no abstraction. Two codebases, explicit contract.
+
 **Where logic lives:**
 - **API routes** — All in `api/index.ts`. One file: Express app, every route, session, auth. No controllers; handlers are inline.
 - **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.

@@ -8,11 +8,14 @@ Complete step-by-step demo. Everything you need is here.
 
 **One process, two sides.** `yarn rw dev` runs API (GraphQL) and web (React) together. Web on port 8910; API (usually 8911) is internal. User hits 8910; web calls GraphQL on the same origin.
 
+**Frontend:** React. **SPA** — client-side routing, one React app. Redwood provides Cells (components that declare a GraphQL query and handle loading/empty/error) and generated hooks.
+
+**Client/server model:** **GraphQL abstraction.** Two codebases (web + api) but the contract is the schema, not REST. You write a GraphQL query in a Cell or page; Redwood generates a typed hook. You don't write `fetch` — you use `useDealsQuery()` or a Cell. The server side: GraphQL SDL defines the schema; services implement resolvers (Prisma calls). So the wire is GraphQL; you think in "queries and mutations" not "endpoints." Client and server are separate dirs, but the abstraction is "query this, get that" with generated types.
+
 **Where logic lives:**
-- **API** — `api/src/`. GraphQL SDL in `graphql/`; services in `services/` (Prisma calls); `functions/graphql.ts` is the handler. No REST; everything goes through GraphQL.
-- **Web** — `web/src/`. Pages, components, cells (data-fetching components). Routes in `Routes.tsx`.
-- **Entry** — `web/src/App.tsx`; API is a serverless-style function (or Express in some configs).
-- **Data flow** — Cells/Pages use generated GraphQL hooks; services implement the resolvers.
+- **API** — `api/src/`. GraphQL SDL in `graphql/`; services in `services/`; `functions/graphql.ts` is the handler.
+- **Web** — `web/src/`. Pages, components, cells. Routes in `Routes.tsx`.
+- **Entry** — `web/src/App.tsx`.
 
 **Admin area** — Hand-built pages under `web/src/pages/`; they query the GraphQL API. Scaffolding can generate full CRUD from a model.
 

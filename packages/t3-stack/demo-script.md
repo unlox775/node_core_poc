@@ -8,11 +8,14 @@ Complete step-by-step demo. Everything you need is here.
 
 **One server.** Next.js (App Router) on port 3000. tRPC runs inside Next; no separate API server.
 
+**Frontend:** React (Next.js App Router). **SPA-like** — client-side navigation, React components. Next renders on the server when it can; for this app most pages are client components that call tRPC.
+
+**Client/server model:** **Abstracted, type-safe RPC.** You don't write `fetch` or REST. You define procedures on the server (`deal.list`, `admin.deleteDeal`) and call them from the client like functions: `api.deal.list.useQuery()`, `api.admin.deleteDeal.useMutation()`. tRPC infers types — the frontend knows the return shape. The wire is HTTP under the hood, but you never touch it. Clear split: routers = server code (Node), pages/components = client code (browser), but the boundary feels like "calling a function" not "making an HTTP request."
+
 **Where logic lives:**
-- **Data layer** — `src/server/api/routers/`. tRPC routers: `deal.ts`, `admin.ts`. Each router defines procedures (queries, mutations) that use Prisma. Type-safe end-to-end.
-- **Pages** — `src/app/`. App Router: `page.tsx` per route (`/`, `/deals/new`, `/admin`, `/admin/deals`, etc.). Pages use `api.deal` or `api.admin` via tRPC React hooks.
+- **Data layer** — `src/server/api/routers/`. tRPC routers: `deal.ts`, `admin.ts`. Each defines procedures that use Prisma.
+- **Pages** — `src/app/`. App Router: `page.tsx` per route. Pages use `api.deal` or `api.admin` via tRPC hooks.
 - **Entry** — `src/app/layout.tsx`; tRPC provider wraps the app.
-- **No REST** — Frontend calls tRPC procedures, not `/api/...`. One `/api/trpc/[trpc]` route handles all tRPC.
 
 **Admin area** — Pages under `src/app/admin/`. tRPC `admin` router for list/edit/delete. Hand-built UI.
 

@@ -8,10 +8,13 @@ Complete step-by-step demo. Everything you need is here.
 
 **One server.** Remix runs a single Node process (port 5173 in dev). No separate API; routes are the data layer.
 
+**Frontend:** React, but **not** a classic SPA. Remix does full document requests per route — each navigation can be a server round-trip. With client-side nav it feels snappy (fetches data, updates UI), but the mental model is "pages with server-rendered data." Forms post to the server; no `fetch` for mutations. Progressive enhancement: works without JS.
+
+**Client/server model:** **Co-located**, not separated. In one route file you write: `loader` (runs on server, fetches data), `action` (runs on server, handles form submit), and the component (renders on server first, then hydrates on client). You never write `fetch("/api/deals")` — you return data from the loader; Remix passes it to the component. The boundary is in the same file: loader/action = server, component = client after hydration. Your server logic and UI live together; Remix handles the wire.
+
 **Where logic lives:**
-- **Routes** — `app/routes/`. File-based: `deals.new.tsx` = `/deals/new`, `admin.deals.$id.tsx` = `/admin/deals/:id`. Each route exports `loader` (fetch data) and `action` (mutations). Loaders/actions run on the server; they call Prisma directly.
+- **Routes** — `app/routes/`. File-based: `deals.new.tsx` = `/deals/new`, `admin.deals.$id.tsx` = `/admin/deals/:id`. Each route exports `loader`, `action`, and default component.
 - **Entry** — `app/root.tsx` (layout); `app/entry.server.tsx` / `app/entry.client.tsx` (hydration).
-- **No REST API** — The frontend doesn't call `/api/*`. It uses Remix loaders/actions; forms submit to the current route's action.
 
 **Admin area** — Routes under `app/routes/admin.*`. Same pattern: loaders fetch, actions mutate. Session auth in `admin.tsx` layout.
 

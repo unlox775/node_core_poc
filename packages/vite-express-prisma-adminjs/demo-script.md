@@ -8,6 +8,10 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 **Two web servers.** Vite (frontend) on port 5173 serves the React SPA; Express (API) on port 3001 serves REST routes and AdminJS. In dev, Vite proxies `/api` and `/admin` to Express. User hits 5173 only.
 
+**Frontend:** Classic **SPA** (single-page app). React + React Router. One HTML load; client-side routing, no full page reloads. All UI is React components. Vite builds to static JS/CSS; the browser runs it.
+
+**Client/server model:** Clear separation. You write **client code** in `src/` (pages, components) — it runs in the browser. You write **server code** in `api/index.ts` — it runs in Node. The wire is plain HTTP: in your React component you do `fetch("/api/deals")`. You own the contract: you define the route, the JSON shape, the types. No magic — when you're coding the frontend, you're explicitly calling the backend. Two distinct codebases; CORS and proxies connect them.
+
 **Where logic lives:**
 - **API routes & AdminJS** — All in `api/index.ts`. One file: Express app, CORS, session, every route, AdminJS setup.
 - **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.

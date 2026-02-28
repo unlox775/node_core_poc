@@ -8,6 +8,10 @@ Complete step-by-step demo. Everything you need is here.
 
 **Two web servers.** Vite (frontend) on port 5173; NestJS (API) on port 3000. Vite proxies `/api` to Nest. User hits 5173 only.
 
+**Frontend:** Classic **SPA**. React + React Router. Client-side routing.
+
+**Client/server model:** Clear separation. Client (`src/`) runs in browser; server (`api/src/`) runs in Node. You call `fetch("/api/...")` from React. Explicit HTTP, two codebases.
+
 **Where logic lives:**
 - **API** — `api/src/`. Feature modules: `deals/` (controller, service), `admin/` (controller, service), `prisma/`. Controllers define routes; services hit Prisma.
 - **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.

@@ -8,6 +8,10 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 
 **Two web servers.** Vite (frontend) on port 5173; NestJS (API) on port 3000. Vite proxies `/api` and `/admin` to Nest. User hits 5173 only.
 
+**Frontend:** Classic **SPA**. React + React Router. One HTML load; client-side routing. All UI is React; Vite builds to static assets.
+
+**Client/server model:** Clear separation. **Client** (`src/`) runs in the browser; **server** (`api/src/`) runs in Node. You call `fetch("/api/deals")` from React. Same vibe as Vite+Express — explicit HTTP between two codebases. NestJS adds structure on the server (controllers, services, modules) but the boundary is still REST.
+
 **Where logic lives:**
 - **API** — `api/src/`. `main.ts` bootstraps the app; AdminJS wired in there. Feature modules: `deals/` (controller, service, module), `contacts/` (Phase 4), `prisma/`. Controllers define routes; services hit Prisma.
 - **Frontend** — `src/` (pages, components). React Router; Vite builds to `dist/`.
