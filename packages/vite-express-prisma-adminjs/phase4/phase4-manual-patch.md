@@ -6,7 +6,31 @@ If you prefer to apply Phase 4 by hand instead of `git apply`, follow these step
 
 **File:** `prisma/schema.prisma`
 
-After the `AdminUser` model (before `model Deal {`), add the Contact model. In the Deal model add `contacts DealContact[]`. After the Deal model add the DealContact model (dealId, contactId, relations, @@id([dealId, contactId])).
+After the `AdminUser` model (before `model Deal {`), add:
+
+```
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deals     DealContact[]
+}
+```
+
+In the Deal model add `contacts DealContact[]`. After the Deal model add:
+
+```
+model DealContact {
+  dealId    String
+  contactId String
+  deal      Deal    @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  @@id([dealId, contactId])
+}
+```
 
 ## 2. API routes and AdminJS
 
