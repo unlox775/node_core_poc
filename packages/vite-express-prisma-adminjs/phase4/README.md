@@ -35,9 +35,9 @@ npm run db:push   # schema back to Phase 3
 
 ## What Phase 4 Adds
 
-- **Schema**: Contact model, DealContact join table, Deal.contacts relation
-- **AdminJS**: Contact and DealContact resources (auto-generated CRUD)
-- **API**: POST /api/deals accepts optional contact
+- **Schema**: Contact model, DealContact join table, Deal.contacts relation (in `prisma/schema.prisma`)
+- **AdminJS**: Contact resource; custom **Manage contacts** (on Deal) and **Manage deals** (on Contact) record actions; DealContact (join table) not exposed
+- **API**: GET /api/deals, GET /api/deals/:id, GET /api/contacts, GET /api/contacts/:id, POST /api/deals/:dealId/contacts, DELETE /api/deals/:dealId/contacts/:contactId; POST /api/deals accepts optional contact
 - **UI**: Primary contact (optional) on public deal form
 
 ## Manual apply
