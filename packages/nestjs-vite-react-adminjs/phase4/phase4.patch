@@ -1,17 +1,326 @@
+diff --git a/packages/nestjs-vite-react-adminjs/api/src/admin/ManageContactDeals.tsx b/packages/nestjs-vite-react-adminjs/api/src/admin/ManageContactDeals.tsx
+new file mode 100644
+index 0000000..13013bb
+--- /dev/null
++++ b/packages/nestjs-vite-react-adminjs/api/src/admin/ManageContactDeals.tsx
+@@ -0,0 +1,103 @@
++import React, { useEffect, useState } from "react";
++import { Box, Button, FormGroup, Label } from "@adminjs/design-system";
++
++type Deal = { id: string; name: string; description?: string };
++type Contact = { id: string; name: string; email: string; deals?: Deal[] };
++
++const ManageContactDeals: React.FC<{
++  record: { id?: string };
++}> = ({ record }) => {
++  const contactId = record?.id;
++  const [contact, setContact] = useState<Contact | null>(null);
++  const [allDeals, setAllDeals] = useState<Deal[]>([]);
++  const [loading, setLoading] = useState(true);
++
++  useEffect(() => {
++    if (!contactId) return;
++    Promise.all([
++      fetch(`/api/contacts/${contactId}`).then((r) => r.json()),
++      fetch("/api/deals").then((r) => r.json()),
++    ])
++      .then(([c, deals]: [Contact, Deal[]]) => {
++        setContact(c);
++        setAllDeals(deals);
++      })
++      .catch(console.error)
++      .finally(() => setLoading(false));
++  }, [contactId]);
++
++  const deals = contact?.deals ?? [];
++  const availableToAdd = allDeals.filter((d) => !deals.some((x) => x.id === d.id));
++
++  const addDeal = (dealId: string) => {
++    fetch(`/api/deals/${dealId}/contacts`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ contactId }),
++      credentials: "include",
++    }).then(() => {
++      const d = allDeals.find((x) => x.id === dealId);
++      if (d) setContact((prev) => (prev ? { ...prev, deals: [...(prev.deals ?? []), d] } : null));
++    });
++  };
++
++  const removeDeal = (dealId: string) => {
++    fetch(`/api/deals/${dealId}/contacts/${contactId}`, {
++      method: "DELETE",
++      credentials: "include",
++    }).then(() =>
++      setContact((prev) =>
++        prev ? { ...prev, deals: (prev.deals ?? []).filter((d) => d.id !== dealId) } : null
++      )
++    );
++  };
++
++  if (loading) return <Box p="xl">Loading…</Box>;
++  if (!contact) return <Box p="xl">Contact not found.</Box>;
++
++  return (
++    <Box p="xl">
++      <h2>Deals for this contact</h2>
++      <Box mb="xl">
++        {deals.length === 0 ? (
++          <p>No deals linked yet.</p>
++        ) : (
++          <ul style={{ listStyle: "none", padding: 0 }}>
++            {deals.map((d) => (
++              <li key={d.id} style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
++                <span>{d.name}</span>
++                <Button size="sm" variant="danger" onClick={() => removeDeal(d.id)}>
++                  Remove
++                </Button>
++              </li>
++            ))}
++          </ul>
++        )}
++      </Box>
++      {availableToAdd.length > 0 && (
++        <FormGroup>
++          <Label>Add to deal</Label>
++          <select
++            onChange={(e) => {
++              const v = e.target.value;
++              if (v) {
++                addDeal(v);
++                e.target.value = "";
++              }
++            }}
++            style={{ padding: "0.5rem", minWidth: 200 }}
++          >
++            <option value="">— Select deal —</option>
++            {availableToAdd.map((d) => (
++              <option key={d.id} value={d.id}>
++                {d.name}
++              </option>
++            ))}
++          </select>
++        </FormGroup>
++      )}
++    </Box>
++  );
++};
++
++export default ManageContactDeals;
+diff --git a/packages/nestjs-vite-react-adminjs/api/src/admin/ManageDealContacts.tsx b/packages/nestjs-vite-react-adminjs/api/src/admin/ManageDealContacts.tsx
+new file mode 100644
+index 0000000..7ac897f
+--- /dev/null
++++ b/packages/nestjs-vite-react-adminjs/api/src/admin/ManageDealContacts.tsx
+@@ -0,0 +1,105 @@
++import React, { useEffect, useState } from "react";
++import { Box, Button, FormGroup, Label } from "@adminjs/design-system";
++
++type Contact = { id: string; name: string; email: string; phone: string };
++type Deal = { id: string; name: string; contacts?: Contact[] };
++
++const ManageDealContacts: React.FC<{
++  record: { id?: string };
++}> = ({ record }) => {
++  const dealId = record?.id;
++  const [deal, setDeal] = useState<Deal | null>(null);
++  const [allContacts, setAllContacts] = useState<Contact[]>([]);
++  const [loading, setLoading] = useState(true);
++
++  useEffect(() => {
++    if (!dealId) return;
++    Promise.all([
++      fetch(`/api/deals/${dealId}`).then((r) => r.json()),
++      fetch("/api/contacts").then((r) => r.json()),
++    ])
++      .then(([d, contacts]: [Deal, Contact[]]) => {
++        setDeal(d);
++        setAllContacts(contacts);
++      })
++      .catch(console.error)
++      .finally(() => setLoading(false));
++  }, [dealId]);
++
++  const contacts = deal?.contacts ?? [];
++  const availableToAdd = allContacts.filter((c) => !contacts.some((x) => x.id === c.id));
++
++  const addContact = (contactId: string) => {
++    fetch(`/api/deals/${dealId}/contacts`, {
++      method: "POST",
++      headers: { "Content-Type": "application/json" },
++      body: JSON.stringify({ contactId }),
++      credentials: "include",
++    }).then(() => {
++      const c = allContacts.find((x) => x.id === contactId);
++      if (c) setDeal((prev) => (prev ? { ...prev, contacts: [...(prev.contacts ?? []), c] } : null));
++    });
++  };
++
++  const removeContact = (contactId: string) => {
++    fetch(`/api/deals/${dealId}/contacts/${contactId}`, {
++      method: "DELETE",
++      credentials: "include",
++    }).then(() =>
++      setDeal((prev) =>
++        prev ? { ...prev, contacts: (prev.contacts ?? []).filter((c) => c.id !== contactId) } : null
++      )
++    );
++  };
++
++  if (loading) return <Box p="xl">Loading…</Box>;
++  if (!deal) return <Box p="xl">Deal not found.</Box>;
++
++  return (
++    <Box p="xl">
++      <h2>Contacts on this deal</h2>
++      <Box mb="xl">
++        {contacts.length === 0 ? (
++          <p>No contacts linked yet.</p>
++        ) : (
++          <ul style={{ listStyle: "none", padding: 0 }}>
++            {contacts.map((c) => (
++              <li key={c.id} style={{ marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
++                <span>
++                  {c.name} ({c.email})
++                </span>
++                <Button size="sm" variant="danger" onClick={() => removeContact(c.id)}>
++                  Remove
++                </Button>
++              </li>
++            ))}
++          </ul>
++        )}
++      </Box>
++      {availableToAdd.length > 0 && (
++        <FormGroup>
++          <Label>Add existing contact</Label>
++          <select
++            onChange={(e) => {
++              const v = e.target.value;
++              if (v) {
++                addContact(v);
++                e.target.value = "";
++              }
++            }}
++            style={{ padding: "0.5rem", minWidth: 200 }}
++          >
++            <option value="">— Select contact —</option>
++            {availableToAdd.map((c) => (
++              <option key={c.id} value={c.id}>
++                {c.name} ({c.email})
++              </option>
++            ))}
++          </select>
++        </FormGroup>
++      )}
++    </Box>
++  );
++};
++
++export default ManageDealContacts;
+diff --git a/packages/nestjs-vite-react-adminjs/api/src/app.module.ts b/packages/nestjs-vite-react-adminjs/api/src/app.module.ts
+index c2729e3..9225068 100644
+--- a/packages/nestjs-vite-react-adminjs/api/src/app.module.ts
++++ b/packages/nestjs-vite-react-adminjs/api/src/app.module.ts
+@@ -1,8 +1,9 @@
+ import { Module } from '@nestjs/common';
++import { ContactsModule } from './contacts/contacts.module';
+ import { DealsModule } from './deals/deals.module';
+ import { PrismaModule } from './prisma/prisma.module';
+ 
+ @Module({
+-  imports: [PrismaModule, DealsModule],
++  imports: [PrismaModule, DealsModule, ContactsModule],
+ })
+ export class AppModule {}
+diff --git a/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.controller.ts b/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.controller.ts
+new file mode 100644
+index 0000000..293f205
+--- /dev/null
++++ b/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.controller.ts
+@@ -0,0 +1,17 @@
++import { Controller, Get, Param } from '@nestjs/common';
++import { ContactsService } from './contacts.service';
++
++@Controller('api/contacts')
++export class ContactsController {
++  constructor(private contacts: ContactsService) {}
++
++  @Get()
++  list() {
++    return this.contacts.findAll();
++  }
++
++  @Get(':id')
++  getOne(@Param('id') id: string) {
++    return this.contacts.findOne(id);
++  }
++}
+diff --git a/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.module.ts b/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.module.ts
+new file mode 100644
+index 0000000..a2e4b54
+--- /dev/null
++++ b/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.module.ts
+@@ -0,0 +1,11 @@
++import { Module } from '@nestjs/common';
++import { ContactsController } from './contacts.controller';
++import { ContactsService } from './contacts.service';
++import { PrismaModule } from '../prisma/prisma.module';
++
++@Module({
++  imports: [PrismaModule],
++  controllers: [ContactsController],
++  providers: [ContactsService],
++})
++export class ContactsModule {}
+diff --git a/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.service.ts b/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.service.ts
+new file mode 100644
+index 0000000..eec84c9
+--- /dev/null
++++ b/packages/nestjs-vite-react-adminjs/api/src/contacts/contacts.service.ts
+@@ -0,0 +1,22 @@
++import { Injectable } from '@nestjs/common';
++import { PrismaService } from '../prisma/prisma.service';
++
++@Injectable()
++export class ContactsService {
++  constructor(private prisma: PrismaService) {}
++
++  findAll() {
++    return this.prisma.contact.findMany({ orderBy: { name: 'asc' } });
++  }
++
++  findOne(id: string) {
++    return this.prisma.contact
++      .findUnique({
++        where: { id },
++        include: { deals: { include: { deal: true } } },
++      })
++      .then((c) =>
++        c ? { ...c, deals: c.deals.map((dc: { deal: unknown }) => dc.deal) } : null
++      );
++  }
++}
 diff --git a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts
-index 3fbcdc4..c964d44 100644
+index 3fbcdc4..494f7f1 100644
 --- a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts
 +++ b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.controller.ts
-@@ -12,7 +12,7 @@ export class DealsController {
+@@ -11,8 +11,13 @@ export class DealsController {
+     return this.deals.findAll();
    }
  
++  @Get(':id')
++  getOne(@Param('id') id: string) {
++    return this.deals.findOne(id);
++  }
++
    @Post()
 -  create(@Body() body: { name: string; description: string; address: string }) {
 +  create(@Body() body: { name: string; description: string; address: string; contact?: { name: string; email: string; phone: string } }) {
      return this.deals.create(body);
    }
  
-@@ -25,4 +25,14 @@ export class DealsController {
+@@ -25,4 +30,14 @@ export class DealsController {
    remove(@Param('id') id: string) {
      return this.deals.remove(id);
    }
@@ -27,19 +336,26 @@ index 3fbcdc4..c964d44 100644
 +  }
  }
 diff --git a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts
-index 848cf7b..4615b6a 100644
+index 848cf7b..2f2bed1 100644
 --- a/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts
 +++ b/packages/nestjs-vite-react-adminjs/api/src/deals/deals.service.ts
-@@ -1,5 +1,6 @@
+@@ -1,17 +1,40 @@
  import { Injectable } from '@nestjs/common';
  import { DealStatus } from '@prisma/client';
 +import { Prisma } from '@prisma/client';
  import { PrismaService } from '../prisma/prisma.service';
  
  @Injectable()
-@@ -7,11 +8,26 @@ export class DealsService {
+ export class DealsService {
    constructor(private prisma: PrismaService) {}
  
++  findOne(id: string) {
++    return this.prisma.deal.findUnique({
++      where: { id },
++      include: { contacts: { include: { contact: true } } },
++    }).then((d) => (d ? { ...d, contacts: d.contacts.map((dc: { contact: unknown }) => dc.contact) } : null));
++  }
++
    findAll() {
 -    return this.prisma.deal.findMany({ orderBy: { createdAt: 'desc' } });
 +    return this.prisma.deal.findMany({
@@ -67,7 +383,7 @@ index 848cf7b..4615b6a 100644
    }
  
    update(id: string, data: { name?: string; description?: string; address?: string; status?: DealStatus }) {
-@@ -21,4 +37,12 @@ export class DealsService {
+@@ -21,4 +44,12 @@ export class DealsService {
    remove(id: string) {
      return this.prisma.deal.delete({ where: { id } });
    }
@@ -81,20 +397,106 @@ index 848cf7b..4615b6a 100644
 +  }
  }
 diff --git a/packages/nestjs-vite-react-adminjs/api/src/main.ts b/packages/nestjs-vite-react-adminjs/api/src/main.ts
-index 4a7ed28..2382ea4 100644
+index 4a7ed28..7054cee 100644
 --- a/packages/nestjs-vite-react-adminjs/api/src/main.ts
 +++ b/packages/nestjs-vite-react-adminjs/api/src/main.ts
-@@ -19,6 +19,8 @@ async function bootstrap() {
+@@ -1,6 +1,7 @@
+ import 'dotenv/config';
+ import { compare as bcryptCompare } from 'bcryptjs';
+ import { NestFactory } from '@nestjs/core';
++import { join } from 'path';
+ import { AppModule } from './app.module';
+ import { PrismaService } from './prisma/prisma.service';
+ 
+@@ -10,17 +11,72 @@ async function bootstrap() {
+ 
+   const prisma = app.get(PrismaService);
+   // AdminJS v7 is ESM-only; use Function to avoid tsc converting import() to require()
+-  const AdminJS = (await new Function('return import("adminjs")')()).default;
++  const adminjsMod = await new Function('return import("adminjs")')();
++  const AdminJS = adminjsMod.default;
++  const { ComponentLoader } = adminjsMod;
+   const { Database, Resource, getModelByName } = await new Function('return import("@adminjs/prisma")')();
+   const AdminJSExpress = (await new Function('return import("@adminjs/express")')()).default;
+ 
+   AdminJS.registerAdapter({ Database, Resource });
++
++  // Path must point to source .tsx; at runtime we're in dist/, so go up to src/admin
++  const adminComponentsPath = join(__dirname, '..', 'src', 'admin');
++  const componentLoader = new ComponentLoader();
++  const ManageDealContacts = componentLoader.add(
++    'ManageDealContacts',
++    join(adminComponentsPath, 'ManageDealContacts')
++  );
++  const ManageContactDeals = componentLoader.add(
++    'ManageContactDeals',
++    join(adminComponentsPath, 'ManageContactDeals')
++  );
++
++  const recordHandler = async (
++    _req: unknown,
++    _res: unknown,
++    ctx: { record: { toJSON: (admin: unknown) => unknown }; currentAdmin: unknown }
++  ) => ({
++    record: ctx.record.toJSON(ctx.currentAdmin),
++  });
++
+   const admin = new AdminJS({
++    componentLoader,
      resources: [
-       { resource: { model: getModelByName('Deal'), client: prisma }, options: {} },
+-      { resource: { model: getModelByName('Deal'), client: prisma }, options: {} },
++      {
++        resource: { model: getModelByName('Deal'), client: prisma },
++        options: {
++          actions: {
++            manageContacts: {
++              actionType: 'record',
++              label: 'Manage contacts',
++              icon: 'UserCheck',
++              component: ManageDealContacts,
++              handler: recordHandler,
++            },
++          },
++        },
++      },
        { resource: { model: getModelByName('AdminUser'), client: prisma }, options: {} },
-+      { resource: { model: getModelByName('Contact'), client: prisma }, options: {} },
-+      { resource: { model: getModelByName('DealContact'), client: prisma }, options: {} },
++      {
++        resource: { model: getModelByName('Contact'), client: prisma },
++        options: {
++          actions: {
++            manageDeals: {
++              actionType: 'record',
++              label: 'Manage deals',
++              icon: 'Briefcase',
++              component: ManageContactDeals,
++              handler: recordHandler,
++            },
++          },
++        },
++      },
      ],
    });
++  // In development, bundle custom components so they load in the browser
++  if (process.env.NODE_ENV !== 'production') {
++    admin.watch();
++  }
    const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
-diff --git a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
-index f2045bd..ef2cdc4 100644
+     admin,
+     {
+diff --git a/packages/nestjs-vite-react-adminjs/api/tsconfig.json b/packages/nestjs-vite-react-adminjs/api/tsconfig.json
+index a1c778d..e7742ac 100644
+--- a/packages/nestjs-vite-react-adminjs/api/tsconfig.json
++++ b/packages/nestjs-vite-react-adminjs/api/tsconfig.json
+@@ -17,5 +17,6 @@
+     "strictBindCallApply": true,
+     "forceConsistentCasingInFileNames": true,
+     "noFallthroughCasesInSwitch": true
+-  }
++  },
++  "exclude": ["node_modules", "dist", "src/admin"]
+ }
+diff --git a/packages/nestjs-vite-react-adminjs/demo-script.md b/packages/nestjs-vite-react-adminjs/demo-script.md
+index 3a06877..a9ec6d6 100644
 --- a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
 +++ b/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
 @@ -21,6 +21,16 @@ model AdminUser {
