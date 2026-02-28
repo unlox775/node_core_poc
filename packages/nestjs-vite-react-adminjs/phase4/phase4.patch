@@ -483,18 +483,6 @@ index 4a7ed28..7054cee 100644
    const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
      admin,
      {
-diff --git a/packages/nestjs-vite-react-adminjs/api/tsconfig.json b/packages/nestjs-vite-react-adminjs/api/tsconfig.json
-index a1c778d..e7742ac 100644
---- a/packages/nestjs-vite-react-adminjs/api/tsconfig.json
-+++ b/packages/nestjs-vite-react-adminjs/api/tsconfig.json
-@@ -17,5 +17,6 @@
-     "strictBindCallApply": true,
-     "forceConsistentCasingInFileNames": true,
-     "noFallthroughCasesInSwitch": true
--  }
-+  },
-+  "exclude": ["node_modules", "dist", "src/admin"]
- }
 diff --git a/packages/nestjs-vite-react-adminjs/demo-script.md b/packages/nestjs-vite-react-adminjs/demo-script.md
 index 3a06877..a9ec6d6 100644
 --- a/packages/nestjs-vite-react-adminjs/prisma/schema.prisma
