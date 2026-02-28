@@ -63,7 +63,7 @@ Admin area is **AdminJS** — auto-generated from Prisma models. Login uses "eth
 **What the patch adds** (CliffsNotes):
 
 1. **Schema** — Contact model, DealContact join table, Deal.contacts relation.
-2. **AdminJS** — Add Contact and DealContact to `resources` in `main.ts`; AdminJS generates list/create/edit/delete.
+2. **AdminJS** — Add Contact to `resources`; custom **Manage contacts** (on Deal) and **Manage deals** (on Contact) record actions for the many-to-many relation. DealContact (join table) is not exposed.
 3. **Deals API** — Create accepts optional `contact`; add `addContact` / `removeContact` endpoints.
 4. **DealsService** — Include contacts in `findAll`; create with nested contact; addContact/removeContact.
 5. **NewDeal form** — Optional primary contact fields (name, email, phone).
@@ -95,7 +95,7 @@ npm run db:push
 
 1. Go to http://localhost:5173/deals/new. Submit a deal **with** a primary contact (name, email, phone).
 
-2. Log in to admin. See the new deal. AdminJS now has **Contact** and **DealContact** resources — list, create, edit, delete. Manage deal–contact links from AdminJS.
+2. Log in to admin. See the new deal. AdminJS now has a **Contact** resource — list, create, edit, delete. On **Deal** records use the **Manage contacts** action to add/remove contacts; on **Contact** records use **Manage deals** to add/remove deals. DealContact (join table) is not exposed. _First load of a custom action may take a few seconds while AdminJS bundles the component._
 
 ---
 
